@@ -1,0 +1,192 @@
+﻿@model List<KGP.Models.ProductionSchedule>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script type="text/javascript">
+    var startTime = null;
+    $(document).ready(function () {
+        setError('@ViewBag.ErrorMsg')
+    })
+
+    function setError(text) {
+        //document.getElementById('error').innerText = text
+    }
+
+    function isZeroOrEmpty(v) {
+        if (v == '' || v == '0')
+            return true
+        else
+            return false
+    }
+
+    function fetchData() {
+        window.location.href = "/admin/ProductionSchedule?id=" + document.getElementById('fetchId').value + '&site=' + '@ViewBag.Site'
+    }
+
+    function assign() {
+        var data = []
+
+        document.querySelectorAll('.line').forEach(l => {
+            if (l.querySelector('#workcenter').value != '' && l.querySelector('#qty').value != '' && l.querySelector('#qty').value != '0') {
+                var line = {
+                    Id: l.querySelector('#lineId').innerHTML,
+                    WorkSpace: l.querySelector('#workcenter').value,
+                    Quantity: l.querySelector('#qty').value
+                }
+                data.push(line)
+            }
+        })
+
+        fetch('/api/bagjob/assign', {
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            },
+            body: JSON.stringify(data),
+        })
+            .then(response => {
+
+                if (response.ok) {
+                    setError('')
+                    window.location.href = "/admin/ProductionSchedule?id=" + '@ViewBag.FetchId' + '&site=' + '@ViewBag.Site'
+                }
+                else {
+                    //setError('*Error Occured. Please Contact IT')
+                }
+            })
+            .catch(response => console.log(response));
+    }
+
+    function ValidateNumber(e) {
+        var evt = (e) ? e : window.event;
+        var charCode = (evt.keyCode) ? evt.keyCode : evt.which;
+        if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+            return false;
+        }
+        return true;
+    };
+</script>
+
+<style>
+    .jobTable {
+        width: 100%;
+        border: 1px solid darkgrey;
+        margin: auto;
+        font-size: 12px;
+        margin-top: 15px;
+    }
+
+        .jobTable tr th, .jobTable tr td {
+            padding: 3px;
+            vertical-align: top;
+        }
+
+        .jobTable tbody tr {
+            height: 35px;
+        }
+
+    .job-col1 {
+        min-width: 60px;
+    }
+
+    .jobTable tbody tr {
+        border-bottom: 1px solid darkgrey;
+    }
+
+    .jobTable tbody .expandable:hover {
+        background-color: #eee;
+        cursor: pointer;
+    }
+
+    .job-col2 {
+        min-width: 50px;
+    }
+
+    #error {
+        font-weight: bold;
+        color: red;
+    }
+
+    .job-col3 {
+        width: 90px;
+    }
+
+    .filterCont {
+        float: left;
+        margin-left: 4px;
+        margin-bottom: 15px;
+        font-weight: bold;
+    }
+
+    .sort {
+        margin-left: 10px;
+        opacity: .5;
+    }
+
+    .jobTable .sortable:hover {
+        cursor: pointer;
+    }
+
+    .lineTable input {
+        width: 50px;
+    }
+
+    .saveBtn, .completeBtn {
+        margin: 5px;
+    }
+
+    .btn{
+        vertical-align: baseline;
+    }
+
+    #workcenter {
+        padding: 3px;
+        width: 100px;
+    }
+</style>
+
+<div class="jobDTableWrapper">
+    <div>
+        <input id="fetchId" />
+        <button class='btn btn-primary btn-sm' onclick="fetchData()">Fetch</button>
+        <button onclick="assign()" style="float:right;" class='btn btn-success btn-sm'>Assign</button>
+    </div>
+
+    <table class="jobTable">
+        <thead>
+            <tr style="background-color: #E0E0E0;">
+                <th>Production Schedule Id</th>
+                <th>Item Id</th>
+                <th>Description</th>
+                <th>DueDate</th>
+                <th>Work Space</th>
+                <th>Qty</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < Model.Count(); i++)
+            {
+                var schedule = Model[i];
+                <tr class="line">
+                    <td id="lineId" style="display:none;">@schedule.Id</td>
+                    <td>@schedule.ProductionScheduleId</td>
+                    <td>@schedule.ItemId</td>
+                    <td>@schedule.Description</td>
+                    <td>@schedule.DueDate.ToString("MM/dd/yyyy")</td>
+                    <td>
+                        <select id="workcenter">
+                            <option value="">Select</option>
+                            @for (int j = 0; j < ViewBag.WorkCenters.Count; j++)
+                            {
+                                <option>@ViewBag.WorkCenters[j]</option>
+                            }
+                        </select>
+                    </td>
+                    <td>
+                        <input id="qty" value="0" onkeydown="return ValidateNumber(event);" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>    
+</div>
+

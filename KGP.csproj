@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="IDOCore">
+      <HintPath>..\..\..\..\Desktop\dlls\IDOCore.dll</HintPath>
+    </Reference>
+    <Reference Include="IDOMetadataXml">
+      <HintPath>..\..\..\..\Desktop\dlls\IDOMetadataXml.dll</HintPath>
+    </Reference>
+    <Reference Include="IDOProtocol">
+      <HintPath>..\..\..\..\Desktop\dlls\IDOProtocol.dll</HintPath>
+    </Reference>
+    <Reference Include="IDORequestClient">
+      <HintPath>..\..\..\..\Desktop\dlls\IDORequestClient.dll</HintPath>
+    </Reference>
+    <Reference Include="IDORequestProcessor">
+      <HintPath>..\..\..\..\Desktop\dlls\IDORequestProcessor.dll</HintPath>
+    </Reference>
+    <Reference Include="MGShared">
+      <HintPath>..\..\..\..\Desktop\dlls\MGShared.dll</HintPath>
+    </Reference>
+    <Reference Include="WSEnums">
+      <HintPath>..\..\..\..\Desktop\dlls\WSEnums.dll</HintPath>
+    </Reference>
+    <Reference Include="WSFormServerProtocol">
+      <HintPath>..\..\..\..\Desktop\dlls\WSFormServerProtocol.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

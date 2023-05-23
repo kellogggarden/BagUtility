@@ -1,0 +1,245 @@
+﻿<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script type="text/javascript">
+    var startTime = null;
+    $(document).ready(function () {
+        setError('@ViewBag.ErrorMsg')
+
+        document.getElementById('downReason').value = '@Model.Reason'
+    })
+
+    function updateClicked() {
+        var data = {
+            RunID: @Model.RunID,
+            ID: @Model.ID,
+            BagCount: document.getElementById('bagCount').value == '' ? '0' : document.getElementById('bagCount').value,
+            ScrapCount: document.getElementById('scrapCount').value == '' ? '0' : document.getElementById('scrapCount').value,
+            DownTime: document.getElementById('downTime').value == '' ? '0' : document.getElementById('downTime').value,
+            Reason: document.getElementById('downReason').value
+        }
+        save(data)
+    }
+
+    function completeClicked() {
+        if (!validate()) return false;
+
+        var data = {
+            RunID: @Model.RunID,
+            ID: @Model.ID,
+            BagCount: document.getElementById('bagCount').value == '' ? '0' : document.getElementById('bagCount').value,
+            ScrapCount: document.getElementById('scrapCount').value == '' ? '0' : document.getElementById('scrapCount').value,
+            DownTime: document.getElementById('downTime').value == '' ? '0' : document.getElementById('downTime').value,
+            Reason: document.getElementById('downReason').value,
+            Status: 'Approved'
+        }
+        save(data)
+    }
+
+    function save(data) {
+        fetch('/api/bagjob/save', {
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            },
+            body: JSON.stringify(data),
+        })
+            .then(response => {
+
+                if (response.ok) {
+                    setError('')
+                    window.location.href = "/admin/?site=" + '@ViewBag.Site'
+                }
+                else {
+                    setError('*Error Occured. Please Contact IT')
+                }
+            })
+    }
+
+    function setError(text) {
+        document.getElementById('error').innerText = text
+    }
+
+    function isZeroOrEmpty(v) {
+        if (v == '' || v == '0')
+            return true
+        else
+            return false
+    }
+
+    function validate() {
+        setError('')
+        document.getElementById('bagCount').classList.remove('required')
+        document.getElementById('scrapCount').classList.remove('required')
+        document.getElementById('downTime').classList.remove('required')
+        document.getElementById('downReason').classList.remove('required')
+
+        var bag = document.getElementById('bagCount').value
+        var count = document.getElementById('scrapCount').value
+        var downtime = document.getElementById('downTime').value
+        var reason = document.getElementById('downReason').value
+
+        if (reason != '' && isZeroOrEmpty(downtime)) {
+            setError('*Please enter downtime')
+            document.getElementById('downTime').classList.add('required')
+
+            return false
+        }
+
+        if (isZeroOrEmpty(bag) &&
+            isZeroOrEmpty(count) &&
+            isZeroOrEmpty(downtime)) {
+            setError('*Please enter at least one value')
+
+            document.getElementById('bagCount').classList.add('required')
+            document.getElementById('scrapCount').classList.add('required')
+            document.getElementById('downTime').classList.add('required')
+
+            return false
+        }
+
+        if (!isZeroOrEmpty(downtime) && reason == '') {
+            setError('*Please select downtime reason')
+            document.getElementById('downReason').classList.add('required')
+
+            return false
+        }
+
+        return true
+    }
+</script>
+
+<style>
+    .jobBtn {
+        width: 150px;
+    }
+
+    .jobDTable {
+        width: 100%;
+        margin-bottom: 25px;
+    }
+
+        .jobDTable tr td {
+            padding-top: 7px;
+            padding-bottom: 7px;
+            font-weight: bold;
+            vertical-align: top;
+        }
+
+        .jobDTable input, .jobDTable select, .jobDTable textarea {
+            width: 100%;
+            padding: 3px;
+        }
+
+        .jobDTable select {
+            padding: 5px;
+        }
+
+    .jobDTableWrapper {
+        width: calc(100% - 8px);
+        margin: auto;
+        max-width: 1000px;
+    }
+
+        .jobDTableWrapper button {
+            font-weight: bold;
+        }
+
+    .jobDTableWrapper {
+        font-size: 11px;
+    }
+
+    #error {
+        font-weight: bold;
+        color: red;
+    }
+
+    .required {
+        border: 1px solid red;
+    }
+
+    #endBtn:hover {
+        color: darkgrey;
+    }
+</style>
+
+@model KGP.Models.ProductionLine
+
+<div class="jobDTableWrapper">
+    @*Header - ItemID, Description, DueDate, Status, Start Time, End Time*@
+    <span id="error"></span>
+    <table class="jobDTable">
+        <tr>
+            <td>Item ID</td>
+            <td>
+                <input disabled value="@Model.ItemID" />
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Description
+            </td>
+            <td>
+                <textarea disabled rows="3">@Model.Description</textarea>
+            </td>
+        </tr>
+        <tr>
+            <td style="width: 80px;">Qty</td>
+            <td>
+                <input disabled value="@Model.BagCount / @Model.BagQty" />
+            </td>
+        </tr>
+        <tr>
+            <td>Work Center</td>
+            <td>
+                <input disabled value="@Model.WorkCenter" />
+            </td>
+        </tr>
+        <tr>
+            <td>Due Date</td>
+            <td><input disabled type="date" value="@Model.DueDate.ToString("yyyy-MM-dd")" /></td>
+        </tr>
+        <tr>
+            <td>Start Time</td>
+            <td>
+                <input disabled value="@Model.StartTimeStamp" />
+            </td>
+        </tr>
+        <tr>
+            <td>Start Time</td>
+            <td>
+                <input disabled value="@Model.EndTimeStamp" />
+            </td>
+        </tr>
+        <tr>
+            <td># of Bags</td>
+            <td>
+                <input type="number" id="bagCount" value="@Model.BagCount" />
+            </td>
+        </tr>
+        <tr>
+            <td>
+                # of Scraps
+            </td>
+            <td>
+                <input type="number" id="scrapCount" value="@Model.ScrapCount" />
+            </td>
+        </tr>
+        <tr>
+            <td>DownTime</td>
+            <td><input type="number" id="downTime" value="@Model.DownTime" /></td>
+        </tr>
+        <tr>
+            <td>Down Reason</td>
+            <td>
+                <select id="downReason"> 
+                    <option value="">Select</option>
+                    <option value="Power_Outage">Power Outage</option>
+                    <option value="Malfunction">Malfunction</option>
+                </select>
+            </td>
+        </tr>
+    </table>
+    <button id="startBtn" onclick="return updateClicked()" class="jobBtn btn btn-primary btn-sm">Update</button>
+    <button style="float:right;" id="endBtn" onclick="return completeClicked()" class="jobBtn btn btn-dark btn-sm">Complete</button>
+
+</div>
+

@@ -1,0 +1,1684 @@
+﻿@model List<KGP.Models.ProductionHeader>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<style>
+    .jobTable {
+        width: calc(100% - 8px);
+        border: 1px solid darkgrey;
+        margin: auto;
+        font-size: 12px;
+    }
+
+    .jobTable tr th, .jobTable tr td {
+        padding: 3px;
+        vertical-align: middle;
+    }
+
+    .jobTable tbody tr {
+        height: 35px;
+    }
+
+    .job-col1 {
+        min-width: 60px;
+    }
+
+    .jobTable tbody tr {
+        border-bottom: 1px solid darkgrey;
+    }
+
+    .jobTable tbody .expandable:hover {
+        background-color: #eee;
+        cursor: pointer;
+    }
+
+    .job-col2 {
+        min-width: 50px;
+    }
+
+    #error {
+        font-weight: bold;
+        color: red;
+    }
+
+    .job-col3 {
+        width: 90px;
+    }
+
+    .filterCont{
+        float: left;
+        margin-left: 4px;
+        margin-bottom: 15px;
+        font-weight: bold;
+    }
+
+    .sort {
+        margin-left: 10px;
+        opacity: .5;
+    }
+
+    .jobTable .sortable:hover {
+        cursor: pointer;
+    }
+
+    .lineTable {
+        font-size: 12px;
+    }
+
+    .lineTable tr td, tr th {
+        padding: 5px;
+    }
+
+    .lineTable tr{
+        border: 1px solid #ccc;
+    }
+
+    .lineTable input {
+        width: 50px;
+    }
+
+    .saveBtn, .completeBtn {
+        margin: 5px;
+        width: 65px;
+        font-weight: bold;
+    }
+
+    .invalid {
+        border: 1px solid red;
+    }
+
+    .modal {
+  display: block; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  padding-top: 100px; /* Location of the box */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0,0,0); /* Fallback color */
+  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}
+
+/* Modal Content */
+.modal-content {
+  background-color: #fefefe;
+  margin: auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 94%;
+  height: 700px;
+  max-width: 1500px;
+  min-width: 1480px;
+}
+
+/* The Close Button */
+.close {
+  color: #aaaaaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.detailHeader input{
+    width: 71%;
+    margin-left:10px;
+}
+
+.grnBtn{
+        color: #fff;
+        background-color: #198754;
+        border-color: #198754;
+        padding: 2px;
+        border: 2px solid transparent;
+        border-radius: .2rem;
+}
+
+.preloading{
+        /*width: 100%;
+        height: 100%;
+        opacity: .5;
+        background-color: white;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 9999;
+        text-align: center;*/
+        display: none;
+}
+.altTable tr:nth-child(even) {
+    background-color: #eee;
+}
+.downhref {
+    color:blue;
+}
+.downhref:hover {
+    cursor: pointer;
+}
+
+    .btn-mtl {
+        color: #000;
+        background-color: sandybrown;
+        border-color: sandybrown;
+    }
+
+    .materialTable tr td, .materialTable tr th {
+        padding: 5px;
+    }
+
+    .materialTable tbody tr:nth-child(odd) {
+        background-color: #ccc;
+    }
+
+    .materialTable tbody tr {
+        border: 1px solid #ccc;
+    }
+
+    .modalLoadingMessageContainer {
+          text-align: center;
+          background-color: white;
+          position: fixed;
+          width: 100vw;
+          height: 100vh;
+          top: 0;
+          left: 0;
+          opacity: .8;
+          z-index: 1056;
+    }
+
+    .modalMessageText {
+          z-index: 1057;
+          width: 100%;
+          left:0;
+          position: fixed;
+          text-align: center;
+    }
+
+</style>
+
+@functions {
+    public string GetReasonSelect(string reason, bool disabled = false)
+    {
+        //List<string> codes = new List<string>();
+
+        //codes.AddRange(new List<string> { "No material", "Lack of personal", "In-feed", "Volumetric", "Bagger", "Sealing issue", "Date code", "Conveyors", "Palletizer", "Wrapper", "Lunch", "Break", "Change Over", "Safety Meeting" });
+
+        string html = "";
+
+        if (disabled)
+        {
+            html = "<select disabled class='reason' style='height: 25px;'>";
+        }
+        else { 
+            html = "<select class='reason' style='height: 25px;'>";
+        }
+
+        foreach (var c in ViewBag.DownReasons)
+        {
+            html += "<option " + (reason == c.Reason ? "selected" : "") + " value='" + c.Reason + "'>" + c.Reason + "</option>";
+        }
+
+        //html += "<option " + (line.Reason == "Power_Outage" ? "selected" : "") + " value='Power_Outage'>Power Outage</option>";
+        //html += "<option " + (line.Reason == "Malfunction" ? "selected" : "") + " value='Malfunction'>Malfunction</option>";
+
+        html += "</select>";
+
+        return html;
+    }
+
+    public string GetOperatorSelect(string op, bool addEmpty = false, bool disabled = false)
+    {
+        string html = "";
+
+        if(disabled) {
+            html = "<select disabled class='operator' style='height: 25px;'>";
+        }
+        else {
+            html = "<select class='operator' style='height: 25px;'>";
+        }
+        
+        if(addEmpty) {
+            html += "<option value=''>Select</option>";
+        }
+
+        foreach (string c in ViewBag.Operators)
+        {
+            html += "<option " + (op.ToLower() == c.ToString().ToLower() ? "selected" : "") + " value='" + c + "'>" + c.Split('@')[0] + "</option>";
+        }
+        
+        html += "</select>";
+        
+        return html;
+    }
+
+    public string convertSecToTime(float seconds)
+    {
+        TimeSpan time = TimeSpan.FromSeconds(seconds);
+        string str = time .ToString(@"hh\:mm\:ss");
+        return str;
+    }
+}
+
+<script type="text/javascript">
+    var prevOpened = ''
+    var deleteLineId = ''
+    var deleteRunId = ''
+
+    $(document).ready(function () {
+        deleteLineId = '' 
+        deleteRunId = ''
+
+        var modal = document.getElementById("myModal");
+        var span = document.getElementsByClassName("close")[0];
+        
+        span.onclick = function() {
+          //modal.style.display = "none";
+          window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + '@ViewBag.Filter' + '&direction=' + '@ViewBag.Direction'
+        }
+        
+        window.onclick = function(event) {
+          if (event.target == modal) {
+            //modal.style.display = "none";
+          }
+        }
+
+
+
+        setError('@ViewBag.ErrorMsg')
+        document.querySelectorAll('.sort').forEach(i => {
+            if(i.id == '@ViewBag.Filter')
+            {
+                if('@ViewBag.Direction' != 'ASC') {
+                    document.getElementById(i.id).classList.add('fa')   
+                    document.getElementById(i.id).classList.add('fa-sort-down')
+                }
+                else {
+                    document.getElementById(i.id).classList.add('fa')        
+                    document.getElementById(i.id).classList.add('fa-sort-up')
+                }
+            }
+            else {
+                document.getElementById(i.id).classList.add('fa')   
+                document.getElementById(i.id).classList.add('fa-sort')
+            }
+        })
+
+        document.querySelectorAll('.dt').forEach(i => {
+            if(i.value != '') {
+                var dt = new Date(i.value.replace('T', ' ') + ':00 UTC')
+                var dt2 = new Date(i.value.replace('T', ' ') + ':00')
+
+                var difference = dt2 - dt;
+                
+                var hr = (difference / (3600*1000)) * -1
+                var dt3 = addHours(dt, hr)
+                
+                //var date = new Date(dt.value + ' UTC');
+                i.value = dt3.toISOString().slice(0, 16)
+            }
+        })
+    })
+
+    function addHours(date, hours) {
+        date.setHours(date.getHours() + hours);
+
+        return date;
+    }
+
+    function postHeader(id) {
+        setLineError('')
+        if(document.querySelectorAll('.line').length > 0) {
+            setLineError('Please post all jobs before complete')
+        }
+        else {
+            var data = {
+                ID: id,
+                ProductionLines: [],
+                Site: '@ViewBag.Site',
+                ItemID: '@ViewBag.SelectedProduct.ItemID',
+                ProductionScheduleID: '@ViewBag.SelectedProduct.ProductionScheduleID'
+            }
+
+            document.querySelector('.preloading').style.display = "block";
+
+            fetch('/api/admin/postHeader', {
+                method: 'post',
+                headers: {
+                    "Content-type": "application/json",
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => {
+
+                if (response.ok) {
+                    window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + '@ViewBag.Filter' + '&direction=' + '@ViewBag.Direction'
+                }
+                else {
+                    return response.text().then(text => { throw new Error(text) })
+                }
+            })
+            .catch(err => {
+                document.querySelector('.preloading').style.display = "none";
+                setLineError(err)
+            });
+        }
+    }
+
+    function validateAndSave(lineTable, id, status) {
+        var data = {
+            ID: id,
+            ProductionLines: []
+        }
+
+        document.getElementById(lineTable).querySelectorAll('.line').forEach(l => {
+            l.querySelector('.bag').value = l.querySelector('.bag').value == '' ? '0' : l.querySelector('.bag').value
+            l.querySelector('.scrap').value = l.querySelector('.scrap').value == '' ? '0' : l.querySelector('.scrap').value
+            l.querySelector('.pallet').value = l.querySelector('.pallet').value == '' ? '0' : l.querySelector('.pallet').value
+
+            var line = {
+                RunID: id,
+                ID: l.querySelector('.lineID').innerHTML,
+                BagCount: l.querySelector('.bag').value,
+                ScrapCount: l.querySelector('.scrap').value,
+                PalletCount: l.querySelector('.pallet').value,
+                Status: status,
+                StartTimeStamp: l.querySelector('.startDt').value == '' ? null : l.querySelector('.startDt').value,
+                EndTimeStamp: l.querySelector('.endDt').value == '' ? null : l.querySelector('.endDt').value,
+                Operator: l.querySelector('.operator').value,
+                ModifiedBy: '@ViewBag.CreatedBy'
+            }
+            data.ProductionLines.push(line)
+        })
+        data.Status = 'Complete'
+
+        document.querySelector('.preloading').style.display = "block";
+        fetch('/api/bagjob/validateJob', {
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            },
+            body: JSON.stringify(data),
+        })
+            .then(response => {
+
+                if (response.ok) {
+                    document.querySelector('.preloading').style.display = "none";
+                    setError('')
+                    return response.json()
+                    //if(status == 'Complete')
+                    //    window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + '@ViewBag.Filter' + '&direction=' + '@ViewBag.Direction'
+                    //else 
+                    //    window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + '@ViewBag.Filter' + '&direction=' + '@ViewBag.Direction' + '&showModalId=' + '@ViewBag.HeaderId'
+                }
+                else {
+                    return response.text().then(text => { throw new Error(text) })
+                }
+            })
+            .then((obj) => {
+                var valid = true;
+
+                for (let k in obj) {
+                    if(obj[k] != "") {
+                        document.getElementById('failed_line_' + k).style.display = "inline-block";
+                        document.getElementById('failed_line_' + k).title = obj[k]
+                        valid = false;
+                        document.querySelector('.preloading').style.display = "none";
+                    }
+                }
+
+                if(valid) {
+                    save(lineTable, id, status)
+                }
+            })
+            .catch(err => {
+               document.querySelector('.preloading').style.display = "none";
+               setLineError(err)
+            });
+    }
+
+    function validateAndSaveLine(lineTable, id) {
+        var data = {
+            ID: id,
+            ProductionLines: [],
+            Site: '@ViewBag.Site',
+            ItemID: '@ViewBag.SelectedProduct.ItemID',
+            ProductionScheduleID: '@ViewBag.SelectedProduct.ProductionScheduleID'
+        }
+
+        document.getElementById(lineTable).querySelector('.bag').value = document.getElementById(lineTable).querySelector('.bag').value == '' ? '0' : document.getElementById(lineTable).querySelector('.bag').value
+        document.getElementById(lineTable).querySelector('.scrap').value = document.getElementById(lineTable).querySelector('.scrap').value == '' ? '0' : document.getElementById(lineTable).querySelector('.scrap').value
+        document.getElementById(lineTable).querySelector('.pallet').value = document.getElementById(lineTable).querySelector('.pallet').value == '' ? '0' : document.getElementById(lineTable).querySelector('.pallet').value
+
+        var line = {
+                RunID: id,
+                ID: document.getElementById(lineTable).querySelector('.lineID').innerHTML,
+                BagCount: document.getElementById(lineTable).querySelector('.bag').value,
+                ScrapCount: document.getElementById(lineTable).querySelector('.scrap').value,
+                PalletCount: document.getElementById(lineTable).querySelector('.pallet').value,
+                StartTimeStamp: document.getElementById(lineTable).querySelector('.startDt').value == '' ? null : document.getElementById(lineTable).querySelector('.startDt').value,
+                EndTimeStamp: document.getElementById(lineTable).querySelector('.endDt').value == '' ? null : document.getElementById(lineTable).querySelector('.endDt').value,
+                Operator: document.getElementById(lineTable).querySelector('.operator').value,
+                ModifiedBy: '@ViewBag.CreatedBy',
+                Status: 'Complete'
+            }
+
+        data.ProductionLines.push(line)
+
+        document.querySelector('.preloading').style.display = "block";
+
+        fetch('/api/bagjob/validateJob', {
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            },
+            body: JSON.stringify(data),
+        })
+        .then(response => {
+
+            if (response.ok) {
+                //document.querySelector('.preloading').style.display = "none";
+                setError('')
+                return response.json()
+            }
+            else {
+                return response.text().then(text => { throw new Error(text) })
+            }
+        })
+        .then((obj) => {
+            var valid = true;
+
+            for (let k in obj) {
+                if(obj[k] != "") {
+                    document.getElementById('failed_line_' + k).style.display = "inline-block";
+                    document.getElementById('failed_line_' + k).title = obj[k]
+                    valid = false;
+                        document.querySelector('.preloading').style.display = "none";
+                }
+            }
+
+            if(valid) {
+                    postLine(data)
+            }
+        })
+        .catch(err => {
+           document.querySelector('.preloading').style.display = "none";
+           setLineError(err)
+        });
+    }
+
+    function postLine(data) {
+        //api/admin/postLine
+        fetch('/api/admin/postLine', {
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            },
+            body: JSON.stringify(data),
+        })
+            .then(response => {
+
+                if (response.ok) {
+                    setError('')
+                    window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + '@ViewBag.Filter' + '&direction=' + '@ViewBag.Direction' + '&showModalId=' + '@ViewBag.HeaderId'
+                }
+                else {
+                    return response.text().then(text => { throw new Error(text) })
+                }
+            })
+            .catch(err => {
+               document.querySelector('.preloading').style.display = "none";
+               setLineError(err)
+            });
+    }
+
+    function save(lineTable, id, status) {
+        var data = {
+            ID: id,
+            ProductionLines: []
+        }
+        var isValid = true;
+
+        //document.querySelectorAll('.bag').forEach(l => {
+        //    l.classList.remove('invalid')
+        //})
+        //document.querySelectorAll('.scrap').forEach(l => {
+        //    l.classList.remove('invalid')
+        //})
+        //document.querySelectorAll('.pallet').forEach(l => {
+        //    l.classList.remove('invalid')
+        //})
+        //document.querySelectorAll('.dt').forEach(l => {
+        //    l.classList.remove('invalid')
+        //})
+        //document.querySelectorAll('.reason').forEach(l => {
+        //    l.classList.remove('invalid')
+        //})
+
+
+        if(status == 'Complete') {
+            document.querySelectorAll('.line').forEach(l => {
+                l.querySelector('.bag').value = l.querySelector('.bag').value == '' ? '0' : l.querySelector('.bag').value
+                l.querySelector('.scrap').value = l.querySelector('.scrap').value == '' ? '0' : l.querySelector('.scrap').value
+                l.querySelector('.pallet').value = l.querySelector('.pallet').value == '' ? '0' : l.querySelector('.pallet').value
+
+                var line = {
+                    RunID: id,
+                    ID: l.querySelector('.lineID').innerHTML,
+                    BagCount: l.querySelector('.bag').value,
+                    ScrapCount: l.querySelector('.scrap').value,
+                    PalletCount: l.querySelector('.pallet').value,
+                    Status: status,
+                    StartTimeStamp: l.querySelector('.startDt').value == '' ? null : l.querySelector('.startDt').value,
+                    EndTimeStamp: l.querySelector('.endDt').value == '' ? null : l.querySelector('.endDt').value,
+                    Operator: l.querySelector('.operator').value,
+                    ModifiedBy: '@ViewBag.CreatedBy'
+                }
+
+                //if(line.BagCount == 0 && line.ScrapCount == 0 && line.PalletCount == 0 ) {
+                //    l.querySelector('.bag').classList.add('invalid')
+                //    l.querySelector('.scrap').classList.add('invalid')
+                //    l.querySelector('.pallet').classList.add('invalid')
+                //    isValid = false;
+                //}
+
+                //if(line.StartTimeStamp > line.EndTimeStamp) {
+                //    l.querySelector('.startDt').classList.add('invalid')
+                //    l.querySelector('.endDt').classList.add('invalid')
+                //    isValid = false;
+                //}
+
+                data.ProductionLines.push(line)
+            })
+            data.Status = 'Complete'
+        }
+        else {
+            document.getElementById(lineTable).querySelector('.bag').value = document.getElementById(lineTable).querySelector('.bag').value == '' ? '0' : document.getElementById(lineTable).querySelector('.bag').value
+            document.getElementById(lineTable).querySelector('.scrap').value = document.getElementById(lineTable).querySelector('.scrap').value == '' ? '0' : document.getElementById(lineTable).querySelector('.scrap').value
+            document.getElementById(lineTable).querySelector('.pallet').value = document.getElementById(lineTable).querySelector('.pallet').value == '' ? '0' : document.getElementById(lineTable).querySelector('.pallet').value
+
+            var line = {
+                    RunID: id,
+                    ID: document.getElementById(lineTable).querySelector('.lineID').innerHTML,
+                    BagCount: document.getElementById(lineTable).querySelector('.bag').value,
+                    ScrapCount: document.getElementById(lineTable).querySelector('.scrap').value,
+                    PalletCount: document.getElementById(lineTable).querySelector('.pallet').value,
+                    StartTimeStamp: document.getElementById(lineTable).querySelector('.startDt').value == '' ? null : document.getElementById(lineTable).querySelector('.startDt').value,
+                    EndTimeStamp: document.getElementById(lineTable).querySelector('.endDt').value == '' ? null : document.getElementById(lineTable).querySelector('.endDt').value,
+                    Operator: document.getElementById(lineTable).querySelector('.operator').value,
+                    ModifiedBy: '@ViewBag.CreatedBy'
+                }
+
+            //if (line.BagCount == 0 && line.ScrapCount == 0 && line.PalletCount == 0) {
+            //    document.getElementById(lineTable).querySelector('.bag').classList.add('invalid')
+            //    document.getElementById(lineTable).querySelector('.scrap').classList.add('invalid')
+            //    document.getElementById(lineTable).querySelector('.pallet').classList.add('invalid')
+            //    isValid = false;
+            //}
+
+            //if(line.StartTimeStamp > line.EndTimeStamp) {
+            //    document.getElementById(lineTable).querySelector('.startDt').classList.add('invalid')
+            //    document.getElementById(lineTable).querySelector('.endDt').classList.add('invalid')
+            //    isValid = false;
+            //}
+
+            data.ProductionLines.push(line)
+        }
+
+        if (!isValid) {
+            alert('Please Fix Error')
+            return 
+        }
+
+        document.querySelector('.preloading').style.display = "block";
+        fetch('/api/bagjob/saveBulk', {
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            },
+            body: JSON.stringify(data),
+        })
+            .then(response => {
+
+                if (response.ok) {
+                    setError('')
+                    if(status == 'Complete')
+                        window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + '@ViewBag.Filter' + '&direction=' + '@ViewBag.Direction'
+                    else 
+                        window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + '@ViewBag.Filter' + '&direction=' + '@ViewBag.Direction' + '&showModalId=' + '@ViewBag.HeaderId'
+                }
+                else {
+                    return response.text().then(text => { throw new Error(text) })
+                }
+            })
+            .catch(err => {
+               document.querySelector('.preloading').style.display = "none";
+               setLineError(err)
+            });
+    }
+
+    function complete() {
+        
+    }
+
+    function redirectToJobDetailPage(id) {
+        //window.location.href = "/admin/detail?id=" + id + "&site=" + '@ViewBag.Site'
+    }
+
+    function setError(text) {
+        document.getElementById('error').innerText = text
+    }
+
+    function setDownError(text) {
+        document.getElementById('downError').innerText = text
+    }
+
+    function setMatError(text) {
+        document.getElementById('matError').innerText = text
+    }
+
+    function setLineError(text) {
+        document.getElementById('lineError').innerText = text
+    }
+
+    function sortClicked(filter) {
+        document.querySelector('.preloading').style.display = "block";
+
+        var direction = ''
+        if ('@ViewBag.Filter' == filter) {
+            if ('@ViewBag.Direction' == 'ASC') {
+                direction = 'DESC'
+            }
+            else {
+                filter = '@ViewBag.Filter'
+                direction = 'ASC'
+            } 
+        }
+        else {
+            direction = 'ASC'
+        }
+        //window.location.href = "/admin/?filter=" + filter + '&direction=' + direction
+        window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + filter + '&direction=' + direction
+    }
+
+    function showLine(id) {
+        //document.querySelectorAll('.showLine').forEach(l => {
+        //    l.style.display = 'none';
+        //})
+        
+        //if (prevOpened != id) {
+        //    document.getElementById(id).style.display = 'contents';
+        //    prevOpened = id
+        //}
+        //else {
+        //    prevOpened = ''
+        //}
+        window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + '@ViewBag.Filter' + '&direction=' + '@ViewBag.Direction' + '&showModalId=' + id
+        //console.log(id)
+        //document.getElementById("myModal").style.display = "block";
+    }
+
+    function assign(id) {
+        document.querySelector('.preloading').style.display = "block";
+
+        var today = new Date()
+        today.setHours(0);
+        today.setMinutes(0);
+        today.setSeconds(0);
+        today.setMilliseconds(0);
+
+        document.getElementById('lineError').innerHTML = ''
+
+        document.getElementById('newLineQty').value = document.getElementById('newLineQty').value == '' ? '0' : document.getElementById('newLineQty').value
+        //document.getElementById('newLinePalletQty').value = document.getElementById('newLinePalletQty').value == '' ? '0' : document.getElementById('newLinePalletQty').value
+
+
+        if(document.getElementById('workcenter_' + id).value == '') {
+            document.querySelector('.preloading').style.display = "none";
+            document.getElementById('lineError').innerHTML = '*Please Select Work Center'
+            return
+        }
+
+        if(document.getElementById('newLineQty').value == '0' 
+        //&& document.getElementById('newLinePalletQty').value == '0'
+        ) {
+            document.querySelector('.preloading').style.display = "none";
+            document.getElementById('lineError').innerHTML = '*Please Enter Bag Qty'
+            return
+        }
+
+        if (document.getElementById('dueDate').value == '' || new Date(document.getElementById('dueDate').value + 'T00:00:00') < today) {
+            document.querySelector('.preloading').style.display = "none";
+            document.getElementById('lineError').innerHTML = '*Due Date should be greater than yesterday'
+            return 
+        }
+
+        var data = {
+            Id: id,
+            WorkCenter: document.getElementById('workcenter_' + id).value,
+            PalletQty: 0,//document.getElementById('newLinePalletQty').value == '' ? '0' : document.getElementById('newLinePalletQty').value,
+            Qty: document.getElementById('newLineQty').value == '' ? '0' : document.getElementById('newLineQty').value,
+            DueDate: document.getElementById('dueDate').value,
+            ModifiedBy: '@ViewBag.CreatedBy'
+        }
+
+        fetch('/api/admin/insertLine', {
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            },
+            body: JSON.stringify(data),
+        })
+            .then(response => {
+
+                if (response.ok) {
+                    setError('')
+                    window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + '@ViewBag.Filter' + '&direction=' + '@ViewBag.Direction' + '&showModalId=' + '@ViewBag.HeaderId'
+        
+                }
+                else {
+                    return response.text().then(text => { throw new Error(text) })
+                }
+            })
+            .catch(err => {
+                document.querySelector('.preloading').style.display = "none";
+                setLineError(err)
+            });
+
+    }
+
+    function isNumberKey(evt)
+    {
+          var charCode = (evt.which) ? evt.which : event.keyCode;
+          if (charCode > 31 
+            && (charCode < 48 || charCode > 57))
+             return false;
+
+          return true;
+    }
+
+    function isDecimalKey(evt, e){
+        var charCode = (evt.which) ? evt.which : event.keyCode;
+        if(charCode == 46) {
+           if(e.value.indexOf('.') == -1)
+            return true;
+        }
+
+        if (charCode > 31
+            && (charCode < 48 || charCode > 57))
+            return false;
+
+        return true;
+    }
+
+    function convertSecToTime(s) {
+        var date = new Date(null);
+        date.setSeconds(seconds);
+        var hhmmssFormat = date.toISOString().substr(11, 8);
+        console.log(hhmmssFormat);
+    }
+
+    function refresh() {
+        window.location.reload();
+    }
+
+
+    async function loadProductionShedule() {
+        var sId = document.getElementById('sId').value
+        var itemId = document.getElementById('itemId').value
+
+        if(sId == '' || itemId == '') {
+            setError('*Please enter schedule id and item id.')
+            return
+        }
+
+        document.querySelector('.preloading').style.display = "block";
+        document.getElementById('loadBtn').innerText = 'Loading...'
+        //var data = {
+        //    Warehouse: '@ViewBag.Site',
+        //    ScheduleID: document.getElementById('sId').value,
+        //    ItemID: document.getElementById('itemId').value
+        //}
+
+        await fetch('@ViewBag.CSIService' + '/api/ProductionSchedule/GetPendingProdSchedule?warehouse=' + '@ViewBag.Site' + '&scheduleId=' + sId + '&itemId=' + itemId, {
+            method: 'get',
+            headers: {
+                "Content-type": "application/json",
+            }
+        })
+        .then ((response) => {
+            if(response.ok)
+            {
+                return response.json()
+            }
+            else {
+                document.querySelector('.preloading').style.display = "none";
+                document.getElementById('loadBtn').innerText = 'Refresh'
+                setError('*Failed To Fetch CSI Data. Please Contact IT')
+            }
+        }
+            //if (response.ok) {
+            //}
+            //else {
+            //    document.querySelector('.preloading').style.display = "none";
+            //    setError('*Failed To Fetch CSI Data. Please Contact IT')
+            //}
+        )
+        .then((obj) => { 
+            console.log('Data Loaded From CSI...')
+
+            if(obj.length == 0) {
+                document.querySelector('.preloading').style.display = "none";
+                document.getElementById('loadBtn').innerText = 'Refresh'
+                setError('*No job found from CSI.')
+                return
+            }
+            var data = {
+                Warehouse: '@ViewBag.Site',
+                    Schedules: obj
+            }
+
+            fetch('/api/csi/loadPendingProdSchedule', {
+                method: 'post',
+                headers: {
+                    "Content-type": "application/json",
+                },
+                    body: JSON.stringify(data)
+            })
+                .then(response => {
+                    if (response.ok) {
+                        setError('')
+                        //window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + '@ViewBag.Filter' + '&direction=' + '@ViewBag.Direction'
+                        window.location.reload();
+                    }
+                    else {
+                        document.querySelector('.preloading').style.display = "none";
+                        setError('*Failed To SQL Load Table. Please Contact IT')
+                    }
+                })
+        })
+
+
+        //await fetch('/api/csi/loadPendingProdSchedule', {
+        //    method: 'post',
+        //    headers: {
+        //        "Content-type": "application/json",
+        //    },
+        //    body: JSON.stringify(data)
+        //})
+        //    .then(response => {
+        //        if (response.ok) {
+        //            setError('')
+        //            window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + '@ViewBag.Filter' + '&direction=' + '@ViewBag.Direction'
+        //        }
+        //        else {
+        //            document.querySelector('.preloading').style.display = "none";
+        //            setError('*Error Occured. Please Contact IT')
+        //        }
+        //    })
+    }
+
+    function deleteConfirm(runId, lineId) {
+        document.getElementById("myModal2").style.display = "block"
+        deleteLineId = lineId
+        deleteRunId = runId
+    }
+
+    function hideDeleteConfirm() {
+        document.getElementById("myModal2").style.display = "none"
+        deleteLineId = ''
+        deleteRunId = ''
+    }
+
+    //deleteHeaderModal
+    function deleteHeaderConfirm(runId) {
+        document.getElementById("deleteHeaderModal").style.display = "block"
+        deleteRunId = runId
+    }
+
+    function hideDeleteHeaderConfirm() {
+        document.getElementById("deleteHeaderModal").style.display = "none"
+        deleteRunId = ''
+    }
+
+    function hideDownTimePopup() {
+        window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + '@ViewBag.Filter' + '&direction=' + '@ViewBag.Direction' + '&showModalId=' + '@ViewBag.HeaderId'
+    }
+
+    function deleteLine() {
+        document.querySelector('.preloading').style.display = "block";
+        fetch('/api/admin/deletLine?lineId=' + deleteLineId, {
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            }
+        })
+            .then(response => {
+
+                if (response.ok) {
+                    setError('')
+                    window.location.reload();
+                }
+                else {
+                    return response.text().then(text => { throw new Error(text) })
+                }
+            })
+            .catch(err => {
+               document.querySelector('.preloading').style.display = "none";
+               setLineError(err)
+            });
+    }
+
+    function deleteHeader() {
+        document.querySelector('.preloading').style.display = "block";
+        fetch('/api/admin/deleteHeader?id=' + deleteRunId, {
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            }
+        })
+            .then(response => {
+
+                if (response.ok) {
+                    setError('')
+                    window.location.reload();
+                }
+                else {
+                    return response.text().then(text => { throw new Error(text) })
+                }
+            })
+            .catch(err => {
+               document.querySelector('.preloading').style.display = "none";
+               setLineError(err)
+            });
+    }
+
+    function openDownTimeLog(id) {
+        //GET List OF Logs
+        document.querySelector('.preloading').style.display = "block";
+        window.location.href += '&showDownModalId=' + id
+    }
+
+    function openMaterialLog(id) {
+        //GET List OF Logs
+        document.querySelector('.preloading').style.display = "block";
+        window.location.href += '&ShowMaterialModalId=' + id
+    }
+
+    function materialPopup() {
+    
+    }
+
+    function saveDownTimeLog() {
+        var invalid = []
+        var rows = []
+        document.querySelector('.preloading').style.display = "block";
+        document.getElementById("downtimelogtable").querySelectorAll('.downrow').forEach(r => {
+            var row = {
+                Id : r.querySelector('.id').innerHTML,
+                Baler: r.querySelector('.baler').value == '' ? null : r.querySelector('.baler').value,
+                StartDownTime: r.querySelector('.startDt').value == '' ? null : r.querySelector('.startDt').value,
+                EndDownTime : r.querySelector('.endDt').value == '' ? null : r.querySelector('.endDt').value,
+                Reason : r.querySelector('.reason').value,
+                CreatedBy : r.querySelector('.operator').value,
+                ModifiedBy : '@ViewBag.CreatedBy',
+                Pallet: r.querySelector('.pallet').value,
+                Bags: r.querySelector('.bag').value,
+                Scraps: r.querySelector('.scrap').value,
+                HeaderId: r.querySelector('.headerID').innerHTML,
+                LineId: r.querySelector('.lineID').innerHTML
+            }
+            rows.push(row)
+
+            if(row.StartDownTime > row.EndDownTime) {
+                invalid.push(row)
+                r.querySelector('.startDt').style.border = '1px solid red'
+                r.querySelector('.endDt').style.border = '1px solid red'
+            }
+        })
+        if(invalid.length > 0) {
+            document.querySelector('.preloading').style.display = "none";
+            alert('End DonwTime must be later than Start DownTime')
+            return false;
+        }
+
+        fetch('/api/admin/saveDownLogs', {
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            },
+            body: JSON.stringify(rows)
+        })
+            .then(response => {
+
+                if (response.ok) {
+                    setError('')
+                    //window.location.reload();
+                    window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + '@ViewBag.Filter' + '&direction=' + '@ViewBag.Direction' + '&showModalId=' + '@ViewBag.HeaderId'
+                }
+                else {
+                    return response.text().then(text => { throw new Error(text) })
+                }
+            })
+            .catch(err => {
+               document.querySelector('.preloading').style.display = "none";
+               setDownError(err)
+            });
+    }
+
+    function deleteDownTimePopup(id) {
+        document.querySelector('.preloading').style.display = "block";
+
+        fetch('/api/admin/deleteDownLog?id=' + id, {
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            }
+        })
+            .then(response => {
+
+                if (response.ok) {
+                    setError('')
+                    window.location.reload();
+                }
+                else {
+                    return response.text().then(text => { throw new Error(text) })
+                }
+            })
+            .catch(err => {
+               document.querySelector('.preloading').style.display = "none";
+               setDownError(err)
+            });
+    }
+
+    function addDownTimeLog() {
+        document.querySelector('.preloading').style.display = "block";
+
+        var row = {
+            CreatedBy: '@ViewBag.CreatedBy',
+            HeaderId: '@ViewBag.HeaderId',
+            LineId: '@ViewBag.LineId'
+        }
+        
+        fetch('/api/admin/insertDownLog', {
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            },
+            body: JSON.stringify(row)
+        })
+            .then(response => {
+
+                if (response.ok) {
+                    setError('')
+                    window.location.reload();
+                }
+                else {
+                    return response.text().then(text => { throw new Error(text) })
+                }
+            })
+            .catch(err => {
+               document.querySelector('.preloading').style.display = "none";
+               setDownError(err)
+            });
+    }
+
+    function saveMaterialLog() {
+        document.querySelector('.preloading').style.display = "block";
+
+        var list = []
+        document.getElementById('materialTable').querySelectorAll('.materialRow').forEach(e => {
+
+            if (e.querySelector('.startBag').value != '' || e.querySelector('.usedBag').value != '' || e.querySelector('.endBag').value != '') {
+                var o = {
+                    HeaderId: '@ViewBag.HeaderId',
+                    LineId: '@ViewBag.LineId',
+                    Material: e.querySelector('.matId').innerHTML,
+                    Description: e.querySelector('.matDesc').textContent,
+                    StartQty: e.querySelector('.startBag').value == '' ? null : e.querySelector('.startBag').value,
+                    UsedQty: e.querySelector('.usedBag').value == '' ? null : e.querySelector('.usedBag').value,
+                    EndQty: e.querySelector('.endBag').value == '' ? null : e.querySelector('.endBag').value,
+                    CreatedBy: '@ViewBag.CreatedBy'
+                }
+                list.push(o)
+            }
+        })
+
+        if (list.length > 0) {
+            fetch('/api/bagjob/insertMaterial', {
+                method: 'post',
+                headers: {
+                    "Content-type": "application/json",
+                },
+                body: JSON.stringify(list),
+            })
+                .then(response => {
+                    setError('')
+                    if (response.ok) {
+                        window.location.href = "/admin/?site=" + '@ViewBag.Site' + "&filter=" + '@ViewBag.Filter' + '&direction=' + '@ViewBag.Direction' + '&showModalId=' + '@ViewBag.HeaderId'
+                    }
+                    else {
+                    return response.text().then(text => { throw new Error(text) })
+                }
+            })
+            .catch(err => {
+               document.querySelector('.preloading').style.display = "none";
+               setMatError(err)
+            });
+        }
+    }
+</script>
+
+<span id="error"></span>
+<div class="text-center">
+    <div style="text-align: right; width: calc(100% - 4px); margin-bottom: 20px;">
+        <input id="sId" style="width: 120px;" placeholder="Schedule ID" />
+        <input id="itemId" style="width: 120px;" placeholder="Item ID" />
+        <button id="loadBtn" style="width: 120px;" class="grnBtn" onclick="return loadProductionShedule()">Load</button>
+    </div>
+    <table class="jobTable">
+        <thead>
+            <tr style="background-color: #E0E0E0;">
+                <th>ID</th>
+                @*<th>Work Center</th>*@
+                <th onclick="sortClicked('ItemID')" class="sortable job-col2">ItemID<i id="ItemID" class="sort"></i></th>
+                <th class="job-col3" style="width:500px;">Description</th>
+                @*<th>Pallet Qty</th>*@
+                <th class="job-col4">Bag Qty</th>
+                @*<th>Scraps</th>*@
+                <th onclick="sortClicked('DueDate')" class="sortable job-col1">Due Date<i id="DueDate" class="sort""></i></th>
+                <th></th>
+                @*<th>Down Time</th>
+                <th>Down Reason</th>*@
+            </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < Model.Count; i++)
+            {
+                var header = Model[i];
+                var palletTotal = header.ProductionLines.Sum(x => x.PalletCount);
+                var total = header.ProductionLines.Sum(x => x.BagCount + x.PalletCount * x.BagsPerPallet);
+                var name = "lineTable" + i;
+                var showLine = "showLine" + i;
+
+                <tr class="expandable">
+                    <td onclick="showLine('@header.ID')">@header.ID</td>
+                    @*<td>@job.WorkCenter</td>*@
+                    <td onclick="showLine('@header.ID')">@header.ItemID</td>
+                    <td onclick="showLine('@header.ID')">@header.Description</td>
+                    @*<td>@palletTotal</td>*@
+                    <td onclick="showLine('@header.ID')">@total / @header.BagQty</td>
+                    @*<td>@job.ScrapCount</td>*@
+                    <td onclick="showLine('@header.ID')">@header.DueDate.ToString("MM/dd/yyyy")</td>
+                <td style="width:50px;"><button style="width:65px;" class="saveBtn btn btn-danger btn-sm" onclick="deleteHeaderConfirm('@header.ID')">Delete</button></td>
+                    @*<td>@job.DownTime</td>
+                    <td>@job.Reason</td>*@
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@*<div class="preloading">
+    <span style="position: absolute; font-size: 20px; top: 35%;">Loading...</span>
+</div>*@
+
+<div class="preloading">
+
+    <div class="modalLoadingMessageContainer"></div>
+
+    <div class="modalMessageText">
+
+        <h1>Loading...</h1>
+
+    </div>
+
+</div>
+
+
+
+<div id="myModal2" class="modal" style="display:none; z-index:2;">
+    <!-- Modal content -->
+    <div class="modal-content" style="overflow-y: hidden; height: 150px; width: 450px; top: 20%; min-width: 500px;">
+        <div style="margin-top:5px;">
+            Are you sure to delete this line?
+        </div>
+        <div style="margin-top: 50px;">
+            <button class="btn btn-danger btn-sm" style="float:left; width:120px;" onclick="deleteLine()">Delete</button>
+            <button class="btn btn-dark btn-sm" style="float:right; width:120px;" onclick="hideDeleteConfirm()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="deleteHeaderModal" class="modal" style="display:none; z-index:2;">
+    <!-- Modal content -->
+    <div class="modal-content" style="overflow-y: hidden; height: 150px; width: 450px; top: 20%; min-width: 500px;">
+        <div style="margin-top:5px;">
+            Are you sure to delete this transaction?
+        </div>
+        <div style="margin-top: 50px;">
+            <button class="btn btn-danger btn-sm" style="float:left; width:120px;" onclick="deleteHeader()">Delete</button>
+            <button class="btn btn-dark btn-sm" style="float:right; width:120px;" onclick="hideDeleteHeaderConfirm()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+@if(ViewBag.ShowDownModal) {
+    <div id="myModal3" class="modal" style="z-index:2;">
+        <!-- Modal content -->
+        <div class="modal-content" style="overflow-y: hidden; height: 550px; width: 1250px; top: 15%;">
+            <div>
+            <span style="color:red; font-weight:bold; margin-bottom: 15px;" id="downError"></span>
+            </div>
+            <span style="font-weight: bold;">DownTime Logs</span>
+            <div style="margin-top:5px; height: 400px; overflow-y: auto;">
+                <table class="lineTable" style="width: 100%;">
+                    <thead>
+                        <tr style="background-color: black; color:white;">
+                            @if(ViewBag.IsBaler) {
+                                <th>Baler</th>
+                            }
+                            <th>Operator</th>
+                            <th>StartDown</th>
+                            <th>EndDown</th>
+                            <th>Pallet</th>
+                            <th>Bag</th>
+                            <th>Scrap</th>
+                            <th>Reason</th>      
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="downtimelogtable" class="altTable">
+                    @for (int i = 0; i < ViewBag.DownLogs.Count; i++) 
+                    {
+                        var line = ViewBag.DownLogs[i];
+
+                        if(ViewBag.DisableLine) {
+                            <tr class="downrow">
+                                @if(ViewBag.IsBaler) {
+                                    <td>
+                                        @if(line.Baler == 1) {
+                                            <select disabled class="baler">
+                                                <option value="">Select</option>
+                                                <option selected>1</option>
+                                                <option>2</option>
+                                            </select>
+                                        }
+                                        else if(line.Baler == 2) {
+                                            <select disabled class="baler">
+                                                <option value="">Select</option>
+                                                <option>1</option>
+                                                <option selected>2</option>
+                                            </select>
+                                        }
+                                        else {
+                                            <select disabled class="baler">
+                                                <option selected value="">Select</option>
+                                                <option>1</option>
+                                                <option>2</option>
+                                            </select>
+                                        }
+                                    </td>
+                                }
+                                else {
+                                    <td style="display:none;">
+                            <select disabled class="baler">
+                                                <option selected value="">Select</option>
+                                        </select>
+                                    </td>
+                                }
+
+                                <td style="display:none;" class="headerID">@line.HeaderId</td>
+                                <td style="display:none;" class="lineID">@line.LineId</td>
+                                <td style="display:none;" class="id">@line.Id</td>
+                                <td>
+                                    @Html.Raw(GetOperatorSelect(line.CreatedBy, false, true))
+                                </td>
+                                <td>
+                                    <input disabled class="dt startDt" style="width:140px;" type="datetime-local" value="@(line.StartDownTime == null ? "" : ((DateTime)line.StartDownTime).ToString("yyyyy-MM-ddTHH:mm"))" />
+                                </td>
+                                <td>
+                                    <input disabled class="dt endDt" style="width:140px;" type="datetime-local" value="@(line.EndDownTime == null ? "" : ((DateTime)line.EndDownTime).ToString("yyyyy-MM-ddTHH:mm"))" />
+                                </td>
+                                <td><input disabled type="number" class="pallet" value="@line.Pallet" /></td>
+                                <td><input disabled type="number" class="bag" value="@line.Bags" /></td>
+                                <td><input disabled type="number" class="scrap" value="@line.Scraps" /></td>
+                                <td>
+                                    @Html.Raw(GetReasonSelect(line.Reason, true))
+                                </td>
+                                <td>
+                                
+                                </td>
+                            </tr>
+                        }
+                        else {
+                            <tr class="downrow">
+                            @if(ViewBag.IsBaler) {
+                                <td>
+                                    @if(line.Baler == 1) {
+                                        <select class="baler">
+                                            <option value="">Select</option>
+                                            <option selected>1</option>
+                                            <option>2</option>
+                                        </select>
+                                    }
+                                    else if(line.Baler == 2) {
+                                        <select class="baler">
+                                            <option value="">Select</option>
+                                            <option>1</option>
+                                            <option selected>2</option>
+                                        </select>
+                                    }
+                                    else {
+                                        <select class="baler">
+                                            <option selected value="">Select</option>
+                                            <option>1</option>
+                                            <option>2</option>
+                                        </select>
+                                    }
+                                </td>
+                            }
+                            else {
+                                <td style="display:none;">
+                                    <select class="baler">
+                                            <option selected value="">Select</option>
+                                    </select>
+                                </td>
+                            }
+
+                            <td style="display:none;" class="headerID">@line.HeaderId</td>
+                            <td style="display:none;" class="lineID">@line.LineId</td>
+                            <td style="display:none;" class="id">@line.Id</td>
+                            <td>
+                                @Html.Raw(GetOperatorSelect(line.CreatedBy))
+                            </td>
+                            <td>
+                                <input class="dt startDt" style="width:140px;" type="datetime-local" value="@(line.StartDownTime == null ? "" : ((DateTime)line.StartDownTime).ToString("yyyyy-MM-ddTHH:mm"))" />
+                            </td>
+                            <td>
+                                <input class="dt endDt" style="width:140px;" type="datetime-local" value="@(line.EndDownTime == null ? "" : ((DateTime)line.EndDownTime).ToString("yyyyy-MM-ddTHH:mm"))" />
+                            </td>
+                            <td><input type="number" class="pallet" value="@line.Pallet" /></td>
+                            <td><input type="number" class="bag" value="@line.Bags" /></td>
+                            <td><input type="number" class="scrap" value="@line.Scraps" /></td>
+                            <td>
+                                @Html.Raw(GetReasonSelect(line.Reason))
+                            </td>
+                            <td>
+                                    <button class="btn btn-danger btn-sm" style="float:right; width:60px;" onclick="deleteDownTimePopup('@line.Id')">Delete</button>
+                                
+                            </td>
+                        </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 50px;">
+                @if(!ViewBag.DisableLine) {
+                    <button class="btn btn-primary btn-sm" style="float:left; width:120px;" onclick="saveDownTimeLog()">Save</button>
+                    <button class="btn btn-success btn-sm" style="float:left; width:120px; margin-left: 20px;" onclick="addDownTimeLog()">Add</button>
+                }
+                <button class="btn btn-dark btn-sm" style="float:right; width:120px;" onclick="hideDownTimePopup()">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if(ViewBag.ShowMaterialModal) {
+    <div id="myModal3" class="modal" style="z-index:2;">
+        <!-- Modal content -->
+        <div class="modal-content" style="overflow-y: hidden; height: 700px; width: 1000px; padding: 0px;">
+        <div>
+            @*<span onclick="hideDownTimePopup()" class="close" style="margin-right: 20px;">&times;</span>*@
+        </div>
+        <div style="padding: 20px; padding-top: 0px; overflow-y: auto; margin-top: 20px; height: 607px;">
+            <div>
+                <span style="color:red; font-weight:bold; margin-bottom: 15px;" id="matError"></span>
+            </div>
+            <span style="font-weight:bold; font-size: 18px;">Material Log</span>
+            <table class="materialTable" id="materialTable" style="width: 100%; margin-top: 5px;">
+                <thead>
+                    <tr style="background-color:black; color: white;">
+                        <th>Material</th>
+                        <th>Description</th>
+                        <th style="width: 75px;">Total</th>
+                        <th style="width: 75px;">Start</th>
+                        <th style="width: 75px;">Used</th>
+                        <th style="width: 75px;">End</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < ViewBag.Materials.Count; i++)
+                    {
+                        if(ViewBag.DisableLine) 
+                        {
+                            <tr style="height:45px;" class="materialRow">
+                                <td class="matId">@ViewBag.Materials[i].Material</td>
+                                <td class="matDesc">@ViewBag.Materials[i].Description</td>
+                                <td><input disabled class="startBag" style="width: 60px;" value="@ViewBag.Materials[i].StartQty" /></td>
+                                <td><input disabled class="usedBag" style="width: 60px;" value="@ViewBag.Materials[i].UsedQty" /></td>
+                                <td><input disabled class="endBag" style="width: 60px;" value="@ViewBag.Materials[i].EndQty" /></td>
+                            </tr>
+                        }
+                        else {
+                            <tr style="height:45px;" class="materialRow">
+                                <td class="matId">@ViewBag.Materials[i].Material</td>
+                                <td class="matDesc">@ViewBag.Materials[i].Description</td>
+                                <td><input disabled style="width: 60px;" value="@ViewBag.Materials[i].TotalStartQty" /></td>
+                                <td><input class="startBag" style="width: 60px;" value="@ViewBag.Materials[i].StartQty" /></td>
+                                <td><input class="usedBag" style="width: 60px;" value="@ViewBag.Materials[i].UsedQty" /></td>
+                                <td><input class="endBag" style="width: 60px;" value="@ViewBag.Materials[i].EndQty" /></td>
+                            </tr>  
+                        }  
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div style="padding: 20px;">
+            @if(!ViewBag.DisableLine) {
+                <button class="btn btn-primary btn-sm" style="float:left; width:120px;" onclick="saveMaterialLog()">Save</button>
+            } 
+            <button class="btn btn-dark btn-sm" style="float:right; width:120px;" onclick="hideDownTimePopup()">Cancel</button>
+        </div>
+    </div>
+    </div>
+}
+
+@if(ViewBag.ShowMoadl) {
+    <!-- The Modal -->
+    <div id="myModal" class="modal">
+      <!-- Modal content -->
+      <div class="modal-content" style="overflow-y: scroll;">
+        <div>
+        <span class="close">&times;</span>
+        </div>
+        <span style="color:red; font-weight:bold; margin-bottom: 15px;" id="lineError"></span>
+        <div class="detailHeader" style="font-weight: bold; margin-bottom: 20px;">
+            <table>
+                <tr>
+                    <td>Item ID</td>
+                    <td><input disabled value="@ViewBag.SelectedProduct.ItemID" /></td>
+                    <td>Due Date</td>
+                    <td><input disabled value="@ViewBag.SelectedProduct.DueDate.ToString("MM/dd/yyyy")" /></td>
+                    <td>Total Bag Qty</td>
+                    <td><input disabled value="@ViewBag.SelectedProduct.BagQty" /></td>
+@*                    <td>Total Pallet Qty</td>
+                    <td><input disabled value="@ViewBag.SelectedProduct.PalletQty" /></td>*@
+                    <td>Completed Bag Qty</td>
+                    <td><input disabled value="@ViewBag.CompletedBag" /></td>
+                </tr>
+                <tr style="height:15px;"></tr>
+                <tr>
+                    <td>Description</td>
+                    <td colspan="7"><input disabled style="width: 95.0%;" value="@ViewBag.SelectedProduct.Description" /> </td>
+                </tr>
+            </table>
+        </div>
+        <div style="text-align: right; float:right; width: 100%;">
+            <select id="@("workcenter_" + ViewBag.HeaderId)" style="width: 160px; float:left; margin: 5px; padding: 3px; margin-left: 0;">
+                <option value="">Work Center</option>
+                @for (int j = 0; j < ViewBag.WorkCenters.Count; j++)
+                {
+                <option>@ViewBag.WorkCenters[j]</option>
+                }
+            </select>
+
+            @*<input onkeypress="return isNumberKey(event)" id="newLinePalletQty" placeholder="Pallet Qty" style="float:left; margin: 5px; width: 100px;" />*@
+
+            <input onkeypress="return isNumberKey(event)" id="newLineQty" placeholder="Bag Qty" style="float:left; margin: 5px; width: 100px;" value="@ViewBag.Remainig" />
+
+            <input id="dueDate" placeholder="Due Date" type="date" style="float: left; margin: 5px; height: 30px; width: 120px;" value="@DateTime.Now.ToString("yyyy-MM-dd")" /> 
+
+            <button style="float:left; width: 120px;" onclick="assign('@ViewBag.HeaderId')" class="saveBtn btn btn-success btn-sm">Add</button>
+
+            <button style="float:left; width: 120px;" onclick="refresh()" class="saveBtn btn btn-success btn-sm">Refresh</button>
+
+
+            @*<button style="width: 120px;" class="completeBtn btn btn-dark btn-sm" onclick="save('lineTable', '@ViewBag.HeaderId', 'Complete')">Complete</button>*@
+            <button style="width: 120px;" class="completeBtn btn btn-dark btn-sm" onclick="postHeader('@ViewBag.HeaderId')">Complete</button>
+
+        </div>
+        <table class="lineTable" id="lineTable" style="width: 100%;">
+            <thead>
+                <tr style="background-color: black; color: white;">
+                    <th>Status</th>
+                    <th>Reason</th>
+                    <th>WC</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>OP Time</th>
+                    <th>Operator</th>
+                    @*<th>Pallet Qty</th>*@
+                    <th>Bag Qty</th>
+                    <th>Pallet</th>
+                    <th class="job-col4">Bags</th>
+                    <th>Scraps</th>
+                    <th>Down Time</th>
+                    @*<th>Reason</th>*@
+                    <th>Due</th>
+                    <td></td>
+                </tr>
+            </thead>
+            <tbody id="lineBody">
+                @for (int j = 0; j < ViewBag.ProductionLines.Count; j++)
+                {
+                    var line = ViewBag.ProductionLines[j];
+                    var reason = "reason_" + line.ID;
+                    var lineId = "line_" + line.ID;
+
+                if(line.Status.ToLower() == "complete") {
+                <tr>
+                    <td class="status">
+                        <i class='fas fa-exclamation-circle' style='font-size:18px; color:red; display:none;' id="failed_@lineId"></i>
+                        @line.Status
+                    </td>
+                    <td>@(line.Status.ToLower() == "paused" ? line.Reason : "")</td>
+                    <td>@line.WorkCenter</td>
+                    <td style="display:none;" class="lineID">@line.ID</td>
+                    <td>
+                        @*@(line.StartTimeStamp == null ? "" : ((DateTime)line.StartTimeStamp).ToString())*@
+                        <input disabled class="dt startDt" style="width:140px;" type="datetime-local" value="@(line.StartTimeStamp == null ? "" : ((DateTime)line.StartTimeStamp).ToString("yyyyy-MM-ddTHH:mm"))" />
+                    </td>
+                    <td>
+                        @*@(line.EndTimeStamp == null ? "" : ((DateTime)line.EndTimeStamp).ToString())*@
+                        <input disabled class="dt endDt" style="width:140px;" type="datetime-local" value="@(line.EndTimeStamp == null ? "" : ((DateTime)line.EndTimeStamp).ToString("yyyyy-MM-ddTHH:mm"))" />
+                    </td>
+                    @if(line.StartTimeStamp != null && line.EndTimeStamp != null)
+                    {
+                    TimeSpan timeDiff = line.EndTimeStamp - line.StartTimeStamp;
+                    string diffInHoursMinutes = string.Format("{0:00}:{1:00}", (int)timeDiff.TotalHours, timeDiff.Minutes);
+                    <td>@diffInHoursMinutes</td>
+                    }
+                    else
+                    {
+                    <td>00:00</td>
+                    }
+                    <td>
+                        @*@line.Operator*@
+                        @Html.Raw(GetOperatorSelect(line.Operator, true, true))
+                    </td>
+                    @*<td>@line.PalletQty</td>*@
+                    <td>@(line.BagCount + line.PalletCount * line.BagsPerPallet)/@line.Qty</td>
+                    <td><input disabled onkeypress="return isNumberKey(event)" class="pallet" value='@line.PalletCount' /></td>
+                    <td><input disabled onkeypress="return isNumberKey(event)" class="bag" value='@line.BagCount' /></td>
+                    <td><input disabled onkeypress="return isNumberKey(event)" class="scrap" value='@line.ScrapCount' /></td>
+                    <td><a class="downHref" onclick="openDownTimeLog('@line.ID')">@convertSecToTime(line.DownTime)</a></td>
+                    @*<td>
+                    @Html.Raw(GetReasonSelect(line))
+                    </td>*@
+                    <td>
+                        @*@line.DueDate.ToString("MM/dd/yyyy")*@
+                        <input disabled style="width: 85px;" type="date" value="@line.DueDate.ToString("yyyy-MM-dd")" />
+                    </td>
+                    <td>
+                        <button class="saveBtn btn btn-mtl btn-sm" style="width: 80px;" onclick="openMaterialLog('@line.ID')">Material</button>
+                    </td>
+                </tr>
+                    }
+                    else {
+                        <tr id="@lineId" class="line" onclick="redirectToJobDetailPage(@line.ID)">
+                            <td class="status">
+                            <i class='fas fa-exclamation-circle' style='font-size:18px; color:red; display:none;' id="failed_@lineId"></i>
+                                @line.Status
+                            </td>
+                            <td>@(line.Status.ToLower() == "paused" ? line.Reason : "")</td>
+                            <td>@line.WorkCenter</td>
+                            <td style="display:none;" class="lineID">@line.ID</td>
+                            <td>
+                                @*@(line.StartTimeStamp == null ? "" : ((DateTime)line.StartTimeStamp).ToString())*@
+                                <input class="dt startDt" style="width:140px;" type="datetime-local" value="@(line.StartTimeStamp == null ? "" : ((DateTime)line.StartTimeStamp).ToString("yyyyy-MM-ddTHH:mm"))" />
+                            </td>
+                            <td>
+                                @*@(line.EndTimeStamp == null ? "" : ((DateTime)line.EndTimeStamp).ToString())*@
+                                <input class="dt endDt" style="width:140px;" type="datetime-local" value="@(line.EndTimeStamp == null ? "" : ((DateTime)line.EndTimeStamp).ToString("yyyyy-MM-ddTHH:mm"))" />
+                            </td>
+                             @if(line.StartTimeStamp != null && line.EndTimeStamp != null)
+                             {
+                                TimeSpan timeDiff = line.EndTimeStamp - line.StartTimeStamp;
+                                 string diffInHoursMinutes = string.Format("{0:00}:{1:00}", (int)timeDiff.TotalHours, timeDiff.Minutes);
+                                <td>@diffInHoursMinutes</td>
+                             }
+                             else 
+                             {
+                                 <td>00:00</td>
+                             }
+                            <td>
+                                @*@line.Operator*@
+                                @Html.Raw(GetOperatorSelect(line.Operator, true))
+                            </td>
+                            @*<td>@line.PalletQty</td>*@
+                            <td>@(line.BagCount + line.PalletCount * line.BagsPerPallet)/@line.Qty</td>
+                            <td><input onkeypress="return isNumberKey(event)" class="pallet" value='@line.PalletCount' /></td>
+                            <td><input onkeypress="return isNumberKey(event)" class="bag" value='@line.BagCount' /></td>
+                            <td><input onkeypress="return isNumberKey(event)" class="scrap" value='@line.ScrapCount' /></td>
+                            <td><a class="downHref" onclick="openDownTimeLog('@line.ID')">@convertSecToTime(line.DownTime)</a></td>
+                            @*<td>
+                                @Html.Raw(GetReasonSelect(line))
+                            </td>*@
+                            <td>
+                                @*@line.DueDate.ToString("MM/dd/yyyy")*@
+                            <input style="width: 85px;" type="date" value="@line.DueDate.ToString("yyyy-MM-dd")" />
+                            </td>
+                            <td>
+                                <button class="saveBtn btn btn-mtl btn-sm" style="width: 80px;" onclick="openMaterialLog('@line.ID')">Material</button>
+                                <button class="saveBtn btn btn-info btn-sm" onclick="validateAndSaveLine('@lineId', '@line.RunID')">Post</button>
+                                <button class="saveBtn btn btn-primary btn-sm" style="color:black;" onclick="save('@lineId', '@line.RunID', '')">Save</button>
+                                <button style="width:65px;" class="saveBtn btn btn-danger btn-sm" onclick="deleteConfirm('@line.RunID', '@line.ID')">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+      </div>
+    </div>
+}
