@@ -1,0 +1,384 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+<style>
+    table {
+        border-spacing: 0px;
+        text-align: left;
+    }
+
+    th {
+        border-bottom: 1px solid black;
+    }
+
+    th,
+    td {
+/*        padding-top: 5px;
+        padding-bottom: 5px;*/
+    }
+
+    hr {
+        width: 96%;
+        opacity: 1;
+        border-top: 1px solid #000;
+        margin-bottom:0;
+    }
+
+    hr:not([size]) {
+        height: 0.5px;
+    }
+
+    footer {
+        width: 100%;
+        text-align: center;
+        margin-top: auto;
+    }
+
+/*    .container {
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+    }*/
+
+    .scheduleContainer {
+        min-height: calc(100vh - 35px);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .header {
+        margin-left: auto;
+        margin-right: auto;
+        width: 96%;
+    }
+
+    .header hr {
+        width:100%;
+    }
+
+    .center {
+        margin-left: auto;
+        margin-right: auto;
+        margin-top: 3rem;
+        width: 96%;
+    }
+
+    .right {
+        margin-top: 50px;
+        margin-right: 2%;
+        float: right;
+        width: 72%;
+    }
+
+    .left {
+        margin-top: 50px;
+        margin-left: 2%;
+        float: left;
+        width: 20%;
+    }
+
+/*    .bottomBorder {
+        padding-top: 15px;
+        padding-bottom: 0px;
+    }*/
+
+    .bottomTables {
+        margin-bottom:2rem;
+    }
+
+    .left .bottomBorder {
+        padding-top:8px;
+    }
+
+    .grayTableHeader {
+        background-color: #CBCBCB;
+    }
+
+    .printBtn {
+        color: #fff;
+        background-color: #007bff;
+        border-color: #007bff;
+        padding: 2px;
+        border: 2px solid transparent;
+        border-radius: .2rem;
+    }
+
+    .scheduleContainer {
+        font-size: 12px;
+    }
+</style>
+
+<style media="print">
+/*    #landscape {
+        page: landscape;
+    }*/
+</style>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        setError('@ViewBag.ErrorMsg')
+
+    })
+
+    function setError(text) {
+        document.getElementById('error').innerText = text
+    }
+
+    function printPage() {
+        alert('Please use landscape layout.')
+        window.print();
+    }
+</script>
+
+@model List<KGP.Models.ProductionLine>
+
+@*<head>
+    <h1>Production Schedule Report</h1>
+    <hr />
+</head>
+*@
+<span id="error"></span>
+<div class="scheduleContainer" id="landscape">
+    <!--<h1>Online HTML Editor</h1>-->
+    <!--<div>This is real time online HTML Editor</div>-->
+    <div class="header">
+        <h1 style="float: left;">Production Schedule Report</h1>
+        <button id="printBtn" style="float: right; width: 120px;" class="printBtn" onclick="printPage()">Print</button>
+        <hr />
+    </div>
+
+    @for (int i = 0; i < Model.Count; i++)
+    {
+        var header = Model[i];
+        <table class="center">
+            <tr class="grayTableHeader">
+                <th style="width:10%;">Line</th>
+                <th style="width:40%;">Operator</th>
+                <th style="width:6%;">Shift</th>
+            </tr>
+            <tr>
+                <td>@header.WorkCenter</td>
+                <td>@header.Operator</td>
+                <td>@header.Shift</td>
+            </tr>
+        </table>
+        
+                <table class="center">
+                    <tr class="grayTableHeader">
+                        <th style="width:10%;">Item</th>
+                        <th style="width:40%;">Description</th>
+                        <th style="width:6%;">U/M</th>
+                        <th style="width:12%;">Date</th>
+                        <th style="width:8%;">Qty</th>
+                        <th style="width:12%;">Start Date</th>
+                        <th style="width:12%;">End Date</th>
+                    </tr>
+                    <tr>
+                        <td>@header.ItemID</td>
+                        <td>@header.Description</td>
+                        <td>@header.UM</td>
+                        <td>@header.DueDate.ToString("MM/dd/yyyy")</td>
+                        <td>@header.BagQty</td>
+                        <td class="bottomBorder">
+                            <hr>
+                        </td>
+                        <td class="bottomBorder">
+                            <hr>
+                        </td>
+                    </tr>
+                </table>
+
+                <div class="bottomTables">
+@*                    <table class="left">
+                        <tr>
+                            <th>Start Time</th>
+                            <th>End Time</th>
+                        </tr>
+                        <tr>
+                            <td class="bottomBorder"><hr></td>
+                            <td class="bottomBorder"><hr></td>
+                        </tr>
+                        <tr style="height:30px;"></tr>
+                        <tr>
+                            <th>Pallets</th>
+                            <th>Bags</th>
+                            <th>Scraps</th>
+                        </tr>
+                        <tr>
+                            <td class="bottomBorder"><hr></td>
+                            <td class="bottomBorder"><hr></td>
+                            <td class="bottomBorder"><hr></td>
+                        </tr>
+                    </table>*@
+                <table class="left">
+                    <tr>
+                        <td>
+                        <table style="width: 100%;">
+                            <tr>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                            </tr>
+                            <tr>
+                                <td class="bottomBorder"><hr></td>
+                                <td class="bottomBorder"><hr></td>
+                            </tr>
+                        </table>
+                        </td>
+                    </tr>
+                    <tr style="height:30px;"></tr>
+                    <tr>
+                        <td>
+                        <table style="width:100%;">
+                            <tr>
+                                <th>Pallets</th>
+                                <th>Bags</th>
+                                <th>Scraps</th>
+                            </tr>
+                            <tr>
+                                <td class="bottomBorder"><hr></td>
+                                <td class="bottomBorder"><hr></td>
+                                <td class="bottomBorder"><hr></td>
+                            </tr>
+                        </table>
+                        </td>
+                    </tr>
+                </table>
+
+                    <table class="right">
+                        <tr>
+                            <th style="width:20%;">Material</th>
+                            <th style="width:45%;">Material Description</th>
+                            <th style="width:20%;">Qty Required</th>
+                            <th style="width:5%;">UM</th>
+                            <th style="width:10%;">Qty Used</th>
+                        </tr>
+                @for (int j = 0; j < Model[i].Materials.Count; j++)
+                {
+                    var materialItem = Model[i].Materials[j];
+                                <tr>
+                                    <td>@materialItem.Material</td>
+                                    <td>@materialItem.Description</td>
+                                    <td>@(materialItem.UnitPerBag * header.BagQty)</td>
+                                    <td>@materialItem.UM</td>
+                                    <td class="bottomBorder">
+                                        <hr>
+                                    </td>
+                                </tr>
+                }
+                    </table>
+
+                    <table class="left" style="width: 96%; margin-right: 2%;">
+                        <tr>
+                            <th style="width: 60%;">Down Reason</th>
+                            <th>Start Time</th>
+                            <th>End Time</th>
+                        </tr>
+                        <tr>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                            <td class="bottomBorder">
+                                <hr>
+                            </td>
+                        </tr>
+                    </table>
+
+
+                    <p style="page-break-after: always;"></p>
+                </div>
+        @*            <div>
+            <p class="spaceBetweenItem">ttt</p>
+            </div>*@
+    }
+</div>
+
+@*<footer>
+    <hr>
+    <b>Kellogg Garden Products</b>
+</footer>*@
+@*
+<div class="jobDTableWrapper">
+    @for (int i = 0; i < Model.Count; i++)
+    {
+        var header = Model[i];
+        <p>ID: @header.ID</p>
+    }
+
+
+</div>*@
+
+
+

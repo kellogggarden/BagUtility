@@ -1,0 +1,720 @@
+﻿@using System.Globalization;
+
+@functions {
+    public string GetBailerDownReason(int i) 
+    {
+        var down = Model.StoppedBaler.Where(x => x.Baler == i && x.EndDownTime == null).FirstOrDefault();
+
+        return down == null ? "No material" : down.Reason;
+    }
+
+    public bool IsMaterailValid()
+    {
+        foreach (ProductionMaterial m in ViewBag.Materials)
+        {
+            int startQty = m.StartQty == null ? 0 : (int)m.StartQty;
+            int usedQty = m.UsedQty == null ? 0 : (int)m.UsedQty;
+            int endQty = m.EndQty == null ? 0 : (int)m.EndQty;
+
+            if (startQty + usedQty - endQty < 0)
+            {
+                return false;
+            }    
+        }
+        return true;
+    }
+}
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script type="text/javascript">
+    var startTime = null;
+    $(document).ready(function () {
+        setError('@ViewBag.ErrorMsg')
+
+        if('@Model.Status.ToLower()' == 'processing') {
+            document.getElementById('bagCount').disabled = false
+            document.getElementById('scrapCount').disabled = false
+            //document.getElementById('downTime').disabled = false
+            document.getElementById('downReason').disabled = false
+            document.getElementById('palletCount').disabled = false
+            document.getElementById('startBtn').disabled = true
+            document.getElementById('endBtn').disabled = false
+        }
+        if('@Model.Reason' != '')
+            document.getElementById('downReason').value = '@Model.Reason'
+
+        if ('@Model.IsBaler' == 'True') {
+            if (parseInt('@Model.StoppedBaler.Where(x => x.Baler == 1 && x.EndDownTime == null).Count()') >= 1)
+            {
+                document.getElementById('baler1Down').value = '@GetBailerDownReason(1)';
+                document.getElementById('baler1Btn').innerHTML = 'Baler 1 Run';
+                document.getElementById('baler1Down').disabled = true;
+                document.getElementById('baler1note').disabled = true;
+                document.getElementById('baler1Btn').classList.remove('btn-danger')
+                document.getElementById('baler1Btn').classList.add('btn-primary')
+            }
+
+            if (parseInt('@Model.StoppedBaler.Where(x => x.Baler == 2 && x.EndDownTime == null).Count()') >= 1)
+            {
+                document.getElementById('baler2Btn').innerHTML = 'Baler 1 Run';
+                document.getElementById('baler2Down').disabled = true;
+                document.getElementById('baler2note').disabled = true;
+                document.getElementById('baler2Btn').classList.remove('btn-danger')
+                document.getElementById('baler2Btn').classList.add('btn-primary')
+            }
+        }
+        
+        document.querySelectorAll('.dt').forEach(i => {
+            if(i.value != '') {
+                var dt = new Date(i.value.replace('T', ' ') + ':00 UTC')
+                var dt2 = new Date(i.value.replace('T', ' ') + ':00')
+
+                var difference = dt2 - dt;
+                
+                var hr = (difference / (3600*1000)) * -1
+                var dt3 = addHours(dt, hr)
+                
+                //var date = new Date(dt.value + ' UTC');
+                i.value = dt3.toISOString().slice(0, 16)
+            }
+        })
+    })
+
+    function addHours(date, hours) {
+        date.setHours(date.getHours() + hours);
+
+        return date;
+    }
+
+    function startClicked() {
+        document.querySelector('.preloading').style.display = "block";
+        startTime = new Date();
+
+        var existingStart = '@Model.StartTimeStamp'
+
+        var date = new Date();
+        var data = {
+            Id: @Model.ID,
+            RunID: @Model.RunID,
+            StartTimeStamp: existingStart == '' ? startTime.toISOString() : null,
+            BagCount: document.getElementById('bagCount').value == '' ? '0' : document.getElementById('bagCount').value,
+            ScrapCount: document.getElementById('scrapCount').value == '' ? '0' : document.getElementById('scrapCount').value,
+            PalletCount: document.getElementById('palletCount').value == '' ? '0' : document.getElementById('palletCount').value,
+            Operator: '@ViewBag.CreatedBy',
+            Status: 'Processing'
+        }
+        save(data)
+    }
+
+    function endClicked() {
+        document.querySelector('.preloading').style.display = "block";
+        if (document.getElementById('downReason').value == 'Complete Job' && !validate()) {
+            document.querySelector('.preloading').style.display = "none";
+            return false;
+        }
+
+        var date = new Date();
+        var data = {
+            Id: @Model.ID,
+            RunID: @Model.RunID,
+            //StartTimeStamp: startTime != null ? startTime.toISOString() : '@(Model.StartTimeStamp != null ?  ((DateTime)Model.StartTimeStamp).ToString("yyyy-MM-dd'T'HH:mm:ss.fffK", CultureInfo.InvariantCulture) : "")',
+            EndTimeStamp: document.getElementById('downReason').value == 'Complete Job' ? date.toISOString() : null,
+            BagCount: document.getElementById('bagCount').value == '' ? '0' : document.getElementById('bagCount').value,
+            ScrapCount: document.getElementById('scrapCount').value == '' ? '0' : document.getElementById('scrapCount').value,
+            PalletCount: document.getElementById('palletCount').value == '' ? '0' : document.getElementById('palletCount').value,
+            //DownTime: document.getElementById('downTime').value == '' ? '0' : document.getElementById('downTime').value,
+            Reason: document.getElementById('downReason').value,
+            Operator: '@ViewBag.CreatedBy',
+            Status: document.getElementById('downReason').value == "Complete Job" ? 'Submitted' : 'Paused',
+            ModifiedBy: '@ViewBag.CreatedBy',
+            Note: document.getElementById('note').value
+        }
+        save(data)
+    }
+
+    function save(data) {
+        fetch('/api/bagjob/add', {
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            },
+            body: JSON.stringify(data),
+        })
+        .then(response => {
+
+            if (response.ok) {
+                setError('')
+                if (data.Status == 'Submitted' || data.Status == 'Paused')
+                    window.location.href = "/?site=" + '@ViewBag.Site' + "&workCenter=" + '@ViewBag.SelectedWorkCenter'
+                else
+                {
+                    window.location.reload();
+                    //document.getElementById('startTime').value = '@Model.StartTimeStamp' == '' ? startTime.toLocaleString() : document.getElementById('startTime').value
+                    //document.getElementById('bagCount').disabled = false
+                    //document.getElementById('scrapCount').disabled = false
+                    //document.getElementById('palletCount').disabled = false
+                    ////document.getElementById('downTime').disabled = false
+                    //document.getElementById('downReason').disabled = false
+                    //
+                    //document.getElementById('startBtn').disabled = true
+                    //document.getElementById('endBtn').disabled = false
+                    //document.querySelector('.preloading').style.display = "none";
+                }
+            }
+            else {
+                setError('*Error Occured. Please Contact IT')
+                document.querySelector('.preloading').style.display = "none";
+            }
+        })
+    }
+
+    function balerStopOrExecute(baler) {
+        var reason = baler == 1 ? document.getElementById('baler1Down').value : document.getElementById('baler2Down').value
+        var note = baler == 1 ? document.getElementById('baler1note').value : document.getElementById('baler2note').value
+
+        var data = {
+            Id: @Model.ID,
+            RunID: @Model.RunID,
+            BagCount: document.getElementById('bagCount').value == '' ? '0' : document.getElementById('bagCount').value,
+            ScrapCount: document.getElementById('scrapCount').value == '' ? '0' : document.getElementById('scrapCount').value,
+            PalletCount: document.getElementById('palletCount').value == '' ? '0' : document.getElementById('palletCount').value,
+            Operator: '@ViewBag.CreatedBy',
+            Reason: reason,
+            StoppedBaler: [{ Baler: baler }],
+            ModifiedBy: '@ViewBag.CreatedBy',
+            Note: note
+        }
+
+        fetch('/api/bagjob/insertBalerDownLog', {
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            },
+            body: JSON.stringify(data),
+        })
+        .then(response => {
+                window.location.reload();
+        })
+    }
+
+    function setError(text) {
+        document.getElementById('error').innerText = text
+    }
+
+    function setMatError(text) {
+        document.getElementById('matError').innerText = text
+    }
+
+    function isZeroOrEmpty(v) {
+        if(v == '' || v == '0') 
+            return true
+        else 
+            return false
+    }
+
+    function validate() {
+        setError('')
+        document.getElementById('bagCount').classList.remove('required')
+        document.getElementById('scrapCount').classList.remove('required')
+        document.getElementById('palletCount').classList.remove('required')
+        //document.getElementById('downTime').classList.remove('required')
+        document.getElementById('downReason').classList.remove('required')
+
+        var pallet = document.getElementById('palletCount').value 
+        var bag = document.getElementById('bagCount').value 
+        var count = document.getElementById('scrapCount').value
+        //var downtime = document.getElementById('downTime').value
+        var reason = document.getElementById('downReason').value
+
+        //if (reason != '' && isZeroOrEmpty(downtime)) {
+        //    setError('*Please enter downtime')
+        //    document.getElementById('downTime').classList.add('required')
+
+        //    return false
+        //}
+
+        if (isZeroOrEmpty(bag) &&
+            isZeroOrEmpty(count) && isZeroOrEmpty(pallet)//&&
+      //      isZeroOrEmpty(downtime)
+        ){
+            setError('*Please enter at least one value')
+
+            document.getElementById('bagCount').classList.add('required')
+            document.getElementById('scrapCount').classList.add('required')
+            document.getElementById('palletCount').classList.add('required')
+           // document.getElementById('downTime').classList.add('required')
+
+            return false
+            }
+            
+        if (reason == ''){
+            setError('*Please select complete reason')
+            document.getElementById('downReason').classList.add('required')
+
+            return false
+        }
+
+        return true
+    }
+
+    function bailerPopup() {
+        var show = document.getElementById('balerModal').style.display;
+        document.getElementById('balerModal').style.display = show == 'block' ? 'none' : 'block'
+    }
+
+    function materialPopup() {
+        var show = document.getElementById('materialModal').style.display;
+        //document.getElementById('materialModal').style.display = show == 'block' ? 'none' : 'block'
+
+        if(show == 'block') {
+            var list = []
+            document.getElementById('materialTable').querySelectorAll('.materialRow').forEach(e => {
+
+                if (e.querySelector('.startBag').value != '' || e.querySelector('.usedBag').value != '' || e.querySelector('.endBag').value != '') {
+                    var o = {
+                        HeaderId: @Model.RunID,
+                        LineId: @Model.ID,
+                        Material: e.querySelector('.matId').innerHTML,
+                        Description: e.querySelector('.matDesc').textContent,
+                        ScrapQty: e.querySelector('.scrap').value == '' ? null : e.querySelector('.scrap').value,
+                        StartQty: e.querySelector('.startBag').value == '' ? null : e.querySelector('.startBag').value,
+                        UsedQty: e.querySelector('.usedBag').value == '' ? null : e.querySelector('.usedBag').value,
+                        EndQty: e.querySelector('.endBag').value == '' ? null : e.querySelector('.endBag').value,
+                        CreatedBy: '@ViewBag.CreatedBy'
+                    }
+                    list.push(o)
+                }
+            })
+
+            if(list.length > 0) {
+                fetch('/api/bagjob/insertMaterial', {
+                    method: 'post',
+                    headers: {
+                        "Content-type": "application/json",
+                    },
+                    body: JSON.stringify(list),
+                })
+                    .then(response => {
+                        window.location.reload();
+                    })
+            }
+            else {
+                document.getElementById('materialModal').style.display = show == 'block' ? 'none' : 'block'
+            }
+        }
+        else {
+            document.getElementById('materialModal').style.display = show == 'block' ? 'none' : 'block'
+        }
+
+        
+    }
+
+    function reasonChanged()
+    {
+        var note = document.getElementById("downReason").value;
+        console.log(note);
+        if (note != "Complete Job")
+        {
+            document.getElementById('noteFiled').style.display = 'contents'
+        }
+        else
+        {
+            document.getElementById('note').value = ''
+            document.getElementById('noteFiled').style.display = 'none'
+        }
+    }
+</script>
+
+<style>
+    .jobBtn {
+        width: 150px;
+    }
+
+    .balerBtn {
+        width: 100%;
+    }
+    
+    .jobDTable {
+        width: 100%;
+        margin-bottom: 25px;
+    }
+    
+    .jobDTable tr td {
+        padding-top: 7px;
+        padding-bottom: 7px;
+        font-weight: bold;
+        vertical-align: top;
+    }
+
+    .jobDTable input, .jobDTable select, .jobDTable textarea {
+        width: 100%;
+        padding: 3px;
+    }
+
+    .jobDTable select {
+        padding: 5px;
+    }
+
+    .jobDTableWrapper {
+        width: calc(100% - 8px);
+        margin: auto;
+        max-width: 1000px;
+    }
+
+    .jobDTableWrapper button {
+        font-weight: bold;
+    }
+
+    .jobDTableWrapper {
+        font-size: 11px;
+    }
+
+    #error, #matError {
+        font-weight: bold;
+        color: red;
+    }
+
+    .required {
+        border: 1px solid red;
+    }
+
+    .preloading {
+        display: none;
+    }
+
+        .modalLoadingMessageContainer {
+          text-align: center;
+          background-color: white;
+          position: fixed;
+          width: 100vw;
+          height: 100vh;
+          top: 0;
+          left: 0;
+          opacity: .8;
+          z-index: 1056;
+    }
+
+    .modalMessageText {
+          z-index: 1057;
+          width: 100%;
+          top: 0;
+          margin-top: 30vh;
+          left:0;
+          position: fixed;
+          text-align: center;
+    }
+
+    .modal {
+        display: none; /* Hidden by default */
+        position: fixed; /* Stay in place */
+        z-index: 1; /* Sit on top */
+        padding-top: 100px; /* Location of the box */
+        left: 0;
+        top: 0;
+        width: 100%; /* Full width */
+        height: 100%; /* Full height */
+        overflow: auto; /* Enable scroll if needed */
+        background-color: rgb(0,0,0); /* Fallback color */
+        background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    }
+
+    /* Modal Content */
+    .modal-content {
+        background-color: #fefefe;
+        margin: auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 90%;
+        height: 700px;
+    }
+
+    /* The Close Button */
+    .close {
+        color: #aaaaaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+    }
+
+        .close:hover,
+        .close:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        span.circle {
+        background: white;
+        border-radius: 50%;
+        -moz-border-radius: 50%;
+        -webkit-border-radius: 50%;
+        color: #6e6e6e;
+        display: inline-block;
+        font-weight: bold;
+        line-height: 20px;
+        margin-right: 5px;
+        text-align: center;
+        width: 20px;
+      }
+
+      .btn-mtl {
+        color: #000;
+        background-color: sandybrown;
+        border-color: sandybrown;
+      }
+
+      .materialTable tr td, .materialTable tr th {
+        padding: 5px;
+      }
+
+      .materialTable tbody tr:nth-child(odd) {
+        background-color: #ccc;
+      }
+
+      .btn:disabled {
+        background-color: darkgrey !important;
+        border-color: darkgrey !important;
+      }
+</style>
+
+@model KGP.Models.ProductionLine
+
+<div class="jobDTableWrapper">
+    @*Header - ItemID, Description, DueDate, Status, Start Time, End Time*@
+    <span id="error"></span>
+    <div>
+        <button class="jobBtn btn btn-mtl btn-sm" style="float: left; margin-bottom: 20px;" onclick="materialPopup()">Materials</button>
+        @if (Model.IsBaler && Model.Status.ToLower() == "processing")
+        {
+            @if (Model.StoppedBaler.Count > 0)
+            {
+                <button class="jobBtn btn btn-danger btn-sm" style="float:right;" onclick="bailerPopup()">
+                    <span class="circle">@Model.StoppedBaler.Count</span>
+                    Bailer Down
+                </button>
+            }
+            else
+            {
+                <button class="jobBtn btn btn-warning btn-sm" style="float:right;" onclick="bailerPopup()">
+                    Bailer Down
+                </button>
+            }
+        }
+    </div>
+    
+    <table class="jobDTable">
+        <tr>
+            <td>Item ID</td>
+            <td>
+                <input disabled value="@Model.ItemID" />
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Description
+            </td>
+            <td>
+                <textarea disabled rows="3">@Model.Description</textarea>
+            </td>
+        </tr>
+@*        <tr>
+            <td style="width: 80px;">Pallet Qty</td>
+            <td>
+                <input disabled value="@Model.PalletQty" />
+            </td>
+        </tr>*@
+        <tr>
+            <td style="width: 80px;">Bag Qty</td>
+            <td>
+                <input disabled value="@Model.Qty" />
+            </td>
+        </tr>
+        <tr>
+            <td>Due Date</td>
+            <td><input disabled value="@Model.DueDate.ToShortDateString()" /></td>
+        </tr>
+        <tr>
+            <td>Start Time</td>
+            <td>
+                <input id="startTime" type="datetime-local" class="dt" disabled value="@(Model.StartTimeStamp != null ? ((DateTime)Model.StartTimeStamp).ToString("yyyyy-MM-ddTHH:mm") : "")" />
+            </td>
+        </tr>
+        <tr>
+            <td># of Pallet</td>
+            <td>
+                <input disabled type="number" id="palletCount" placeholder="0" value="@(Model.PalletCount == 0 ? "" : Model.PalletCount)" />
+            </td>
+        </tr>
+        <tr>
+            <td># of Bags</td>
+            <td>
+                <input disabled type="number" id="bagCount" placeholder="# of Partials" value="@(Model.BagCount == 0 ? "" : Model.BagCount)" />
+            </td>
+        </tr>
+        <tr>
+            <td>
+                # of Scraps
+            </td>
+            <td>
+                <input disabled type="number" id="scrapCount" placeholder="# of Damage" value="@(Model.ScrapCount == 0 ? "" : Model.ScrapCount)" />
+            </td>
+        </tr>
+        @*<tr>
+            <td>DownTime</td>
+            <td><input disabled type="number" id="downTime" /></td>
+        </tr>*@
+        <tr>
+            <td>Complete Reason</td>
+            <td>
+                <select disabled id="downReason" onchange="reasonChanged()">
+                    <option value="Complete Job">Complete Job - Trabajo Completo</option>
+                    <option disabled>...</option>
+                    @for (int i = 0; i < ViewBag.DownReasons.Count; i++)
+                    {
+                        <option value="@(ViewBag.DownReasons[i].Reason)">@(ViewBag.DownReasons[i].Reason + " - " + ViewBag.DownReasons[i].Spanish)</option>
+                    }
+                </select>
+            </td>
+        </tr>
+        <tr id="noteFiled" style="display:none;">
+            <td>Note</td>
+            <td>
+                <textarea id="note" rows="3"></textarea>
+            </td>
+        </tr>
+    </table>
+    @if (Model.ID != 0)
+    {
+        <button id="startBtn" onclick="startClicked()" class="jobBtn btn btn-primary btn-sm">Start</button>
+        <button disabled style="float:right;" id="endBtn" onclick="endClicked()" class="jobBtn btn btn-danger btn-sm">End</button>
+    }
+    
+</div>
+
+ <div id="balerModal" class="modal" style="z-index:2;">
+     <!-- Modal content -->
+     <div class="modal-content" style="overflow-y: hidden; height: 415px; width: 320px; top: 5%; padding: 0px;">
+        <div>
+            <span onclick="bailerPopup()" class="close" style="margin-right: 20px;">&times;</span>
+        </div>
+         <div style="padding: 20px; padding-top: 0px;">
+            <table style="width: 100%;">
+                <tr>
+                    <td>
+                        <select id="baler1Down" style="width: 100%; height: 27px;">
+                            @for (int i = 0; i < ViewBag.BalerDownReasons.Count; i++)
+                            {
+                                <option value="@(ViewBag.BalerDownReasons[i].Reason)">@(ViewBag.BalerDownReasons[i].Reason + " - " + ViewBag.BalerDownReasons[i].Spanish)</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="height:10px;"></td>
+                </tr>
+                <tr>
+                    <td>
+                        <textarea id="baler1note" rows="2" style="width: 100%;"></textarea>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="height:10px;"></td>
+                </tr>
+                <tr>
+                    <td style="text-align:center;">
+                        <button class="balerBtn btn btn-danger btn-sm" id="baler1Btn" onclick="balerStopOrExecute(1)">Baler 1 Stop</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="height:60px;"></td>
+                </tr>
+                <tr>
+                    <td>
+                        <select id="baler2Down" style="width: 100%; height: 27px;">
+                            @for (int i = 0; i < ViewBag.BalerDownReasons.Count; i++)
+                            {
+                                <option value="@(ViewBag.BalerDownReasons[i].Reason)">@(ViewBag.BalerDownReasons[i].Reason + " - " + ViewBag.BalerDownReasons[i].Spanish)</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="height:20px;"></td>
+                </tr>
+                <tr>
+                    <td>
+                        <textarea id="baler2note" rows="2" style="width: 100%;"></textarea>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="height:10px;"></td>
+                </tr>
+                <tr>
+                    <td style="text-align:center;">
+                        <button class="balerBtn btn btn-danger btn-sm" id="baler2Btn" onclick="balerStopOrExecute(2)">Baler 2 Stop</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="height:40px;"></td>
+                </tr>
+                <tr>
+                    <td style="text-align:center;">
+                        <button class="btn btn-dark btn-sm" style="width: 96%;" onclick="bailerPopup()">Close</button>
+                    </td>
+                </tr>
+            </table>
+         </div>
+     </div>
+</div>
+
+<div id="materialModal" class="modal" style="z-index:2;">
+    <!-- Modal content -->
+    <div class="modal-content" style="overflow-y: hidden; height: 700px; width: 96%; padding: 0px;">
+        <div>
+            <span onclick="materialPopup()" class="close" style="margin-right: 20px;">&times;</span>
+        </div>
+        <div style="padding: 20px; padding-top: 0px; overflow-y: auto;">
+            <div>
+                <span id="matError"></span>
+            </div>
+            <table class="materialTable" id="materialTable">
+                <thead>
+                    <tr>
+                        @*<th>Material</th>*@
+                        <th>Description</th>
+                        <th style="width: 45px;">Srap</th>
+                        <th style="width: 45px;">Start</th>
+                        <th style="width: 45px;">Used</th>
+                        <th style="width: 45px;">End</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < ViewBag.Materials.Count; i++)
+                    {
+                        <tr style="height:45px;" class="materialRow">
+                            <td style="display:none;" class="matId">@ViewBag.Materials[i].Material</td>
+                            <td class="matDesc">@ViewBag.Materials[i].Description</td>
+                            <td><input type="number" class="scrap" onkeypress="return (event.charCode == 8 || event.charCode == 0) ? null : event.charCode >= 48 && event.charCode <= 57" style="width: 30px;" value="@ViewBag.Materials[i].ScrapQty" /></td>
+                            <td><input type="number" class="startBag" style="width: 30px;" value="@ViewBag.Materials[i].StartQty" /></td>
+                            <td><input type="number" class="usedBag" style="width: 30px;" value="@ViewBag.Materials[i].UsedQty" /></td>
+                            <td><input type="number" class="endBag" style="width: 30px;" value="@ViewBag.Materials[i].EndQty" /></td>
+                        </tr>    
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<div class="preloading">
+
+    <div class="modalLoadingMessageContainer"></div>
+
+    <div class="modalMessageText">
+
+        <h1>Loading...</h1>
+
+    </div>
+
+</div>
+

@@ -1,0 +1,502 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+
+}
+
+@functions{
+    public string GetSomething() 
+    {
+        string html = "<div class='pagination'>";
+        
+        int first = ((ViewBag.Page-1) / (int) 5 ) * 5 + 1;
+        int last = ((ViewBag.Page-1) / (int) 5) * 5 + 5;
+
+        if (first != 1)
+        {
+            html += "<a onclick='pageChanged(" + (first - 1) + ")' href='#'>&laquo;</a>";
+        }
+
+        for (int i = first; i <= last; i++)
+        {
+            if (( i - 1 ) * ViewBag.Count + 1 < ViewBag.TotalRecord)
+                html += "<a " + (i == ViewBag.Page ? "class='active'" : "") + " onclick='pageChanged(" + i +")'>" + i + "</a>";
+        }
+
+        if (last * ViewBag.Count < ViewBag.TotalRecord)
+        {
+            html += "<a onclick='pageChanged(" + (last+1) + ")' href='#'>&raquo;</a></div>";
+        }
+
+        return html;
+    }
+}
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+@model List<KGP.Models.OpenOrder>
+
+<style type="text/css">
+    .content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 500px;
+        height: 200px;
+        text-align: center;
+        background-color: #e8eae6;
+        box-sizing: border-box;
+        padding: 10px;
+        z-index: 1;
+        display: none;
+        /*to hide popup initially*/
+    }
+
+    .close-btn {
+        position: absolute;
+        right: 20px;
+        top: 15px;
+        background-color: black;
+        color: white;
+        border-radius: 50%;
+        padding: 4px;
+    }
+
+    .pagination {
+        /*display: inline-block;*/
+    }
+
+    .pagination a {
+        color: black;
+        float: left;
+        padding: 4px 12px;
+        text-decoration: none;
+    }
+
+    .pagination a.active {
+        background-color: #4CAF50;
+        color: white;
+    }
+
+    .pagination a:hover:not(.active) {
+        background-color: #ddd;
+        cursor: pointer;
+    }
+
+    .openOrderTable {
+        font-size: 11px;
+        min-width: 1800px;
+    }
+
+        .openOrderTable tbody tr:nth-child(even) {
+            background: #EEE
+        }
+
+        .openOrderTable table {
+            margin: auto;
+            width: 1850px;
+        }
+
+        .openOrderTable .form-control {
+            font-size: 10px;
+        }
+
+    .openOrderTable textarea {
+        width: 90%;
+        /*margin: auto;*/
+        resize: none;
+        height: 5em;
+    }
+
+    .openOrderTable input {
+        width:80px;
+    }
+
+    .openOrderTable table tr th {
+        background-color: #ccc;
+        font-weight: bold;
+    }
+
+    .openOrderTable table tr td, .openOrderTable table tr th {
+        padding: 5px;
+        /*margin: auto;*/
+    }
+
+    .openOrderTable table tr td {
+        border-bottom: 1px solid #ccc;
+        vertical-align: top;
+    }
+
+    #error {
+        color: red;
+    }
+
+    .searchHd select, .searchHd input, .searchHd button {
+        height: 32px;
+    }
+
+    .openOrderTable th, .openOrderTable td {
+        padding: 3px;
+    }
+
+    .btn{
+        background-color: black;
+        color: white;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .btn:hover {
+        color: white;
+        opacity: .5;    
+    }
+
+    .searchHd input, .searchHd select, .searchHd button {
+        width: 120px;
+    }
+    </style>
+
+@*<button onclick="togglePopup()">show popup</button>*@
+<div class="content">
+    <div onclick="togglePopup()" class="close-btn">
+        ×
+    </div>
+    <h3>Popup</h3>
+    <p>
+        jQuery is an open source JavaScript library
+        that simplifies the interactions between an
+        HTML/CSS document, or more precisely the
+        Document Object Model (DOM), and JavaScript.
+        Elaborating the terms, jQuery simplifies
+        HTML document traversing and manipulation,
+        browser event handling, DOM animations,
+        Ajax interactions, and cross-browser
+        JavaScript development.
+    </p>
+</div>
+
+<script type="text/javascript">
+    var selectedPage = 1;
+    var dataCount = 0;
+    var changedOrder = [];
+
+    $(document).ready(function(){ 
+        console.log('test')
+
+        //if (@ViewBag.Status != null && @ViewBag.Status != '') {
+            document.getElementById("status").value = '@ViewBag.Status'
+        //}
+
+        //if (@ViewBag.StartDate != null && @ViewBag.StartDate != '') {
+            document.getElementById("startDate").value = '@ViewBag.StartDate'
+        //}
+
+        //if (@ViewBag.EndDate != null && @ViewBag.EndDate != '') {
+            document.getElementById("endDate").value = '@ViewBag.EndDate'
+        //}
+
+        //if (@ViewBag.Warehouse != null && @ViewBag.Warehouse != '') {
+            document.getElementById("site").value = '@ViewBag.Warehouse'
+        //}
+        setError('@ViewBag.ErrorMsg')
+    })
+
+    window.onload= function () {
+        const elements = document.querySelectorAll('.orderInput');
+
+        elements.forEach(e => {
+            e.addEventListener('change', (event) => {
+                var id = e.parentElement.parentElement.querySelector('td[name="salesOrder"]').innerText;
+                if(id != '') {
+                    changedOrder.push(id)
+                }
+            });
+        })
+    }
+    
+    function togglePopup() {
+        $(".content").toggle();
+    }
+
+    function reloadPage() {
+        var params = "?warehouse=" + document.getElementById("site").value 
+            + "&status=" + document.getElementById("status").value
+            + "&page=" + selectedPage
+            + "&startDate=" + document.getElementById("startDate").value 
+            + "&endDate=" + document.getElementById("endDate").value
+
+        window.location.href = "/openorder" + params;
+        //const filter = {
+        //    Warehouse: document.getElementById('site').value,
+        //    Status: document.getElementById('status').value,
+        //    StartDate: document.getElementById('startDate').value,
+        //    EndDate: document.getElementById('endDate').value,
+        //    Page: selectedPage
+        //};
+
+        //fetch('/api/order',  {  
+        //method: 'post',
+        //headers: {
+        //    "Content-type": "application/json",
+        //},
+        //    body: JSON.stringify(filter),
+        //})
+        //    .then(response => response.json())
+        //    .then(OpenOrder => 
+        //        //dataCount = OpenOrder.Count
+        //        appendJson(OpenOrder)
+        //    );
+        //;
+    }
+
+    function pageChanged(page) {
+        selectedPage = page
+        reloadPage()
+    }
+
+    function appendJson(data) {
+        dataCount = data.length 
+        $("#ordersTable tr").remove(); 
+        var table = document.getElementById('ordersTable');
+        data.forEach(function(object, index) {
+            var salesOrderDate = new Date(object.salesOrderDate)
+            var dueDate = new Date(object.dueDate)
+
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td>' + object.warehouse + '</td>' +
+               '<td>' + object.orderStatus + '</td>' +
+               '<td>' + object.salesOrder + '</td>' +
+               '<td><textarea id="DeliveryStatus' + index + '" class="orderInput">' + object.deliveryStatus + '</textarea></td>' +
+               '<td>' + object.shipVIA + '</td>' +
+               '<td>' + object.customerNumber + '</td>' +
+               '<td>' + object.customer + '</td>' +
+               '<td>' + object.st + '</td>' +
+               '<td>' + object.phone + '</td>' +
+               '<td>' + object.customerPO + '</td>' +
+               '<td>' + object.palletCount + '</td>' +
+                '<td><input class="orderInput" id="SalesOrderDate' + index + '" type="date" value="' + salesOrderDate.toISOString().split('T')[0] + '" /></td>' +
+               '<td>' + object.originalReqDate + '</td>' +
+                '<td><input class="orderInput" id="DueDate' + index + '" type="date" value="' + dueDate.toISOString().split('T')[0] + '" /></td>' +
+               '<td>' + object.daysLate + '</td>' +
+               '<td>' + object.daysToShip + '</td>' +
+               '<td>' + object.action + '</td>' +
+               '<td>' + object.reqCan + '</td>' +
+               '<td>' + object.confCan + '</td>' +
+               '<td><textarea id="Appointment' + index + '" class="orderInput">' + object.appointment + '</textarea></td>' +
+               '<td><textarea id="OpComments' + index + '" class="orderInput">' + object.opComments + '</textarea></td>' +
+               '<td><textarea id="SalesComment' + index + '" class="orderInput">' + object.salesComment + '</textarea></td>' +
+               '<td>' + object.shipToAddr + ', ' + object.shipToCity + ' ' + object.shipToZip + '</td>';
+            table.appendChild(tr);
+            });
+    }
+
+    function save() {
+        var orders = document.getElementsByClassName("orders");
+        var data = []
+
+        for(var i = 0; i < orders.length; i++) {    
+            if (changedOrder.indexOf(orders[i].querySelector('td[name="salesOrder"]').innerText) != -1) {
+                var order = {
+                    SalesOrder: orders[i].querySelector('td[name="salesOrder"]').innerText,
+                    Warehouse: orders[i].querySelector('td[name="warehouse"]').innerText,
+                    DeliveryStatus: orders[i].querySelector('textarea[name="deliveryStatus"]').value,
+                    SalesOrderDate: orders[i].querySelector('input[name="salesOrderDate"]').value,
+                    DueDate: orders[i].querySelector('input[name="dueDate"]').value,
+                    Appointment: orders[i].querySelector('textarea[name="appointment"]').value,
+                    OpComments: orders[i].querySelector('textarea[name="opComments"]').value,
+                    SalesComment: orders[i].querySelector('textarea[name="salesComment"]').value
+                };
+
+                data.push(order);
+            }
+        }
+
+        if(data.length > 0) {
+            fetch('/api/order/save',  {  
+            method: 'post',
+            headers: {
+                "Content-type": "application/json",
+            },
+                body: JSON.stringify(data),
+            })
+            .then(response => {
+
+                    if (response.ok) {
+                        setError('')
+                        return response.json();
+                    }
+                    else {
+                            setError('Error Occured. Please Contact IT')
+                    }
+            })
+            .then(OpenOrder => 
+                //dataCount = OpenOrder.Count
+                appendJson(OpenOrder)
+            )
+            .catch((Error) => {
+            
+            });
+        }
+        console.log(data);
+    }
+
+    function setError(text) {
+        document.getElementById('error').innerText = text
+    }
+</script>
+
+
+@*@using (Html.BeginForm("Save", "OpenOrder", FormMethod.Post, new { @class = "form-horizontal", role = "form" }))
+{*@
+    @*<form action="openorder" method="GET">*@
+        <table border="0" class="searchHd">
+            <tr style="font-weight: bold;">
+                <td>Site</td>
+                <td>Status</td>
+                <td>Start Date</td>
+                <td>End Date</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td>
+                    <select onchange="return reloadPage()" id="site" name="site">
+                        <option value="%">All</option>
+                        <option>AMER</option>
+                        <option>GGA</option>
+                    </select>
+                </td>
+                <td>
+                    <select onchange="return reloadPage()" id="status" name="status">
+                        <option value="%">All</option>
+                        <option>Cancelled</option>
+                        <option>Ordered</option>
+                        <option>Complete</option>
+                    </select>
+                </td>
+                <td>
+                    <input onchange="return reloadPage()" onkeypress="return false" type="date" id="startDate" />
+                </td>
+                <td>
+                    <input onchange="return reloadPage()" onkeypress="return false" type="date" id="endDate" />
+                </td>
+                <td>
+                    <button class="btn" type="button" style="width:120px" onclick="save()">Save</button>
+                </td>
+                <td style="width: 30px;"></td>
+                <td>
+                    @Html.Raw(GetSomething())
+                </td>
+            </tr>
+        </table>
+    @*</form>*@
+
+    <div style="font-size:12px;font-family:Arial;">
+        <span id="error"></span>
+        <br/>Total Records Found [@ViewBag.TotalRecord]
+    </div>
+    @if (Model.Count > 0)
+    {
+        @*<input id="Submit" type="submit" value="submit" />*@
+
+        <table width="100%" border="1" class="table table-sm openOrderTable">
+            <thead>
+                <tr style="background-color: black; color: white;">
+                @*<td style="font-size:11px;font-family:Arial; border: 1px solid #000;background:#E0E0E0;">WhseID</td>*@
+                <th>Whse</th>
+                <th>OrderStatus</th>
+                <th>SalesOrder</th>
+                <th style="width:150px">DeliveryStatus</th>
+                <th>Ship VIA</th>
+                <th>Cust#</th>
+                <th style="width:100px">Cust</th>
+                <th>ST</th>
+                <th>Phone</th>
+                <th>CustPO</th>
+                <th>PtCount</th>
+                <th style="width:80px">OrderDate</th>
+                <th>OrgReqDate</th>
+                <th>DueDate</th>
+                <th>DLate</th>
+                <th>DTS</th>
+                <th style="width:100px">Action</th>
+                <th>RefCan</th>
+                <th>ConfCan</th>
+                <th style="width:150px">Appointment</th>
+                <th style="width:150px">OpComments</th>
+                <th style="width:150px">SalesComment</th>
+                <th style="width:100px">ShiptoAddr</th>
+            </tr>
+            </thead>
+            <tbody id="ordersTable">
+            @for (int i = 0; i < Model.Count; i++)
+            {
+                var order = Model[i];
+                <tr class="orders">
+                    <td name="warehouse">@order.Warehouse</td>
+                    <td>@order.OrderStatus</td>
+                    <td name="salesOrder">@order.SalesOrder</td>
+                    <td>
+                        <textarea name="deliveryStatus" class="orderInput">@order.DeliveryStatus</textarea>
+                    </td>
+                    <td>@order.ShipVIA</td>
+                    <td>@order.CustomerNumber</td>
+                    <td>@order.Customer</td>
+                    <td>@order.St</td>
+                    <td>@order.Phone</td>
+                    <td>@order.CustomerPO</td>
+                    <td>@order.PalletCount</td>
+                    <td>
+                        <input class="orderInput" name="salesOrderDate" type="date" value="@(order.SalesOrderDate == null ? null : ((DateTime)order.SalesOrderDate).ToString("yyyy-MM-dd"))" />
+                    </td>
+                    <td>@order.OriginalReqDate</td>
+                    <td>
+                        <input class="orderInput" name="dueDate" type="date" value="@(order.DueDate == null ? null : ((DateTime)order.DueDate).ToString("yyyy-MM-dd"))" />
+                    </td>
+                    <td>@order.DaysLate</td>
+                    <td>@order.DaysToShip</td>
+                    <td>@order.Action</td>
+                    <td>@order.ReqCan</td>
+                    <td>@order.ConfCan</td>
+                    <td>
+                        <textarea class="orderInput" name="appointment">@order.Appointment</textarea>
+                    </td>
+                    <td>
+                        <textarea class="orderInput" name="opComments">@order.OpComments</textarea>
+                    </td>
+                    <td>
+                        <textarea class="orderInput" name="salesComment">@order.SalesComment</textarea>
+                    </td>
+                    <td>@order.ShipToAddr<text>, </text>@order.ShipToCity<text> </text>@order.ShipToZip</td>
+                </tr>
+            }
+        </tbody>
+        </table>
+        @*<table border="0" width="100%">
+            <tr>
+                <td align="center">
+
+                    <table border="1">
+                        <tr>
+                            @for (int j = 0; j < ViewBag.PageCount; j++)
+                            {
+                                <td><a href="openorder?page=@j">@j</a></td>
+                                <td> </td>
+                            }
+                        </tr>
+                    </table>
+
+                </td>
+            </tr>
+        </table>*@
+    }
+@*}*@
+
+<script>
+    function onChange(i) {
+        console.log('update')
+        var id = "#orders[" + i + "].IsChanged"
+        $(id).attr('checked', true);
+    }
+</script>
